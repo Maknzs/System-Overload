@@ -1,0 +1,36 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SSH into EC2 and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: EC2_WORKDIR
+          script_stop: true
+          script: |
+            set -e
+            WORKDIR="${EC2_WORKDIR:-/home/ubuntu/system-overload}"
+            mkdir -p "$WORKDIR"
+            cd "$WORKDIR"
+
+            # Clone once if empty
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/Maknzs/SystemOverload.git .
+            fi
+
+            git pull --rebase
+            docker-compose build --pull
+            docker-compose up -d
+            docker image prune -f
