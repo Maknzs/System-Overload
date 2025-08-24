@@ -1,0 +1,13 @@
+snodgrass.ai, www.snodgrass.ai {
+	encode gzip
+
+	# Serve the SPA build
+	root * /usr/share/caddy
+	file_server
+	try_files {path} /index.html
+
+	# Proxy API requests to backend
+	handle_path /api/* {
+		reverse_proxy api:8080
+	}
+}
