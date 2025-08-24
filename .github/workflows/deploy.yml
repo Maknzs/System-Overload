@@ -43,7 +43,7 @@ jobs:
           script_stop: true
           script: |
             set -e
-            WORKDIR="${EC2_WORKDIR:-/home/ubuntu/system-overload}"
+            WORKDIR="${EC2_WORKDIR:-/home/ubuntu/SystemOverload}"
             mkdir -p "$WORKDIR"
             cd "$WORKDIR"
             if [ ! -d ".git" ]; then
