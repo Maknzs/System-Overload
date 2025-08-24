@@ -1,8 +1,7 @@
 name: Deploy to EC2
-
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   deploy:
@@ -11,6 +10,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Get the runner's public IP (the egress IP that will hit your EC2)
+      - name: Detect runner IP
+        id: ip
+        run: echo "IP=$(curl -s https://checkip.amazonaws.com)" >> "$GITHUB_OUTPUT"
+
+      # Configure AWS creds for modifying the security group
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Open SSH (22) to the runner IP /32
+      - name: Allow SSH from runner IP
+        run: |
+          CIDR="${{ steps.ip.outputs.IP }}/32"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.EC2_SG_ID }}" \
+            --ip-permissions IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges="[{CidrIp=$CIDR,Description='gh-actions'}]" \
+          || echo "Rule may already exist; continuing"
+
+      # ---- Your existing SSH deploy step ----
       - name: SSH into EC2 and deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,16 +43,23 @@ jobs:
           script_stop: true
           script: |
             set -e
-            WORKDIR="${EC2_WORKDIR:-/home/ubuntu/SystemOverload}"
+            WORKDIR="${EC2_WORKDIR:-/home/ubuntu/system-overload}"
             mkdir -p "$WORKDIR"
             cd "$WORKDIR"
-
-            # Clone once if empty
             if [ ! -d ".git" ]; then
               git clone https://github.com/Maknzs/SystemOverload.git .
             fi
-
             git pull --rebase
             docker-compose build --pull
             docker-compose up -d
             docker image prune -f
+
+      # Always remove the temporary rule (even if deploy fails)
+      - name: Revoke SSH rule for runner IP
+        if: always()
+        run: |
+          CIDR="${{ steps.ip.outputs.IP }}/32"
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ secrets.EC2_SG_ID }}" \
+            --ip-permissions IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges="[{CidrIp=$CIDR}]" \
+          || echo "Rule was already removed"
