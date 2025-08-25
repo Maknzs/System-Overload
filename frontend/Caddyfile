@@ -5,7 +5,10 @@ snodgrass.ai, www.snodgrass.ai {
 	file_server
 	try_files {path} /index.html
 
-	handle /api/* {
-		reverse_proxy api:8080
+	@api path /api/*
+	reverse_proxy @api http://api:8080 {
+		header_up Host {host}
+		header_up X-Real-IP {remote}
+		header_up X-Forwarded-Proto {scheme}
 	}
 }
