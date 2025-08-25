@@ -2,11 +2,23 @@ services:
   api:
     build: ./backend
     env_file: ./backend/.env
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
     restart: unless-stopped
 
   web:
     build: ./frontend
-    ports: ["80:80", "443:443"]
-    depends_on: ["api"]
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
     restart: unless-stopped
+    volumes:
+      - ./frontend/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
