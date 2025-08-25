@@ -32,7 +32,7 @@ jobs:
             --ip-permissions IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges="[{CidrIp=$CIDR,Description='gh-actions'}]" \
           || echo "Rule may already exist; continuing"
 
-      # ---- Your existing SSH deploy step ----
+      # ---- SSH deploy step ----
       - name: SSH into EC2 and deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
