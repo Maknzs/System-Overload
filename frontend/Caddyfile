@@ -1,19 +1,10 @@
-# Redirect all HTTP to HTTPS on the root domain
-http://snodgrass.ai, http://www.snodgrass.ai {
-	redir https://snodgrass.ai{uri}
-}
-
-# Redirect HTTPS on www to the root domain
-https://www.snodgrass.ai {
-	redir https://snodgrass.ai{uri}
-}
-
-# Serve the app on the canonical hostname
-https://snodgrass.ai {
+snodgrass.ai, www.snodgrass.ai {
 	encode gzip
+
 	root * /usr/share/caddy
 	file_server
 	try_files {path} /index.html
+
 	handle_path /api/* {
 		reverse_proxy api:8080
 	}
