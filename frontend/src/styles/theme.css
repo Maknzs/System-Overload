@@ -1,0 +1,125 @@
+:root {
+  --bg: #0b1020;
+  --surface: #121933;
+  --card: #1a2352;
+  --muted: #8aa0ff;
+  --text: #eef1ff;
+
+  /* Bright, pro palette */
+  --primary: #4f46e5; /* indigo-600 */
+  --primary-700: #4338ca;
+  --accent: #f97316; /* orange-500 */
+  --success: #10b981; /* emerald-500 */
+  --danger: #ef4444; /* red-500 */
+  --warning: #f59e0b; /* amber-500 */
+
+  --radius: 14px;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* Global base */
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 10% -10%, #141b3a 0%, #0b1020 60%)
+      no-repeat,
+    var(--bg);
+}
+
+/* Reusable layout helpers */
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+.page-header {
+  margin: 0 0 18px;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.subtle {
+  color: #cfd6ff;
+  opacity: 0.85;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--card), #121a42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+}
+
+.section-title {
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+/* Nice focus outline for keyboard users */
+:where(button, a, input, select, textarea):focus {
+  outline: 3px solid color-mix(in oklab, var(--primary) 70%, white 30%);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Utility buttons (works with your existing Button, and raw <button>) */
+.btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: white;
+  background: var(--primary);
+  transition: transform 0.06s ease, background 0.15s ease;
+}
+.btn:hover {
+  background: var(--primary-700);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-accent {
+  background: var(--accent);
+}
+.btn-danger {
+  background: var(--danger);
+}
+
+/* Inputs */
+.input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0f1533;
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* Lists/log */
+.list {
+  list-style: disc inside;
+  padding-left: 16px;
+  margin: 0;
+}
+.scroll {
+  max-height: 180px;
+  overflow: auto;
+}

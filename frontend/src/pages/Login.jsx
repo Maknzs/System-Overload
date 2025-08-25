@@ -1,31 +1,59 @@
-import React, { useState } from 'react'
-import { api } from '../api'
+import React, { useState } from "react";
+import Button from "../components/Button";
+import TextInput from "../components/TextInput";
+import { api } from "../api";
+import "./Login.css";
 
-export default function Login({ onLogin, goRegister }){
-  const [emailOrUsername, setId] = useState('')
-  const [password, setPw] = useState('')
-  const [err, setErr] = useState(null)
+export default function Login({ onLogin, goRegister }) {
+  const [emailOrUsername, setId] = useState("");
+  const [password, setPw] = useState("");
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  async function submit(e){
-    e.preventDefault()
-    setErr(null)
-    try{
-      const { token, user } = await api('/auth/login', { method:'POST', body:{ emailOrUsername, password } })
-      onLogin(token, user)
-    }catch(e){ setErr(e.message) }
+  async function submit(e) {
+    e.preventDefault();
+    setErr(null);
+    setLoading(true);
+    try {
+      const { token, user } = await api("/auth/login", {
+        method: "POST",
+        body: { emailOrUsername, password },
+      });
+      onLogin(token, user);
+    } catch (e) {
+      setErr(e.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div>
-      <h1>System Overload</h1>
-      <h2>Login</h2>
-      <form onSubmit={submit}>
-        <div><input placeholder="Email or Username" value={emailOrUsername} onChange={e=>setId(e.target.value)} /></div>
-        <div><input type="password" placeholder="Password" value={password} onChange={e=>setPw(e.target.value)} /></div>
-        <button type="submit">Login</button>
-        <button type="button" onClick={goRegister} style={{ marginLeft: 8 }}>Register</button>
+    <div className="page">
+      <h1 className="page-header">Login</h1>
+      <form className="card auth-box" onSubmit={submit}>
+        <input
+          className="input"
+          placeholder="Email or Username"
+          value={emailOrUsername}
+          onChange={(e) => setId(e.target.value)}
+        />
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPw(e.target.value)}
+        />
+        <div className="auth-actions">
+          <button className="btn btn-accent" type="submit" disabled={loading}>
+            {loading ? "Logging in…" : "Login"}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={goRegister}>
+            Register
+          </button>
+        </div>
       </form>
-      {err && <p style={{ color:'crimson' }}>{err}</p>}
+      {err && <p style={{ color: "var(--danger)", marginTop: 10 }}>{err}</p>}
     </div>
-  )
+  );
 }

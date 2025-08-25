@@ -1,0 +1,38 @@
+.meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #0f1533;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+}
+.hstack {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.zone-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+}
+.deck-count {
+  color: var(--warning);
+  font-weight: 800;
+}
+.log {
+  margin-top: 8px;
+}
