@@ -1,11 +1,11 @@
-export default function TextInput({ label, className = "", ...props }) {
+import React from "react";
+import "./TextInput.css";
+
+export default function TextInput({ className = "", error, ...rest }) {
   return (
-    <label className="block mb-3">
-      {label && <div className="text-sm mb-1 font-medium">{label}</div>}
-      <input
-        {...props}
-        className={`border rounded px-3 py-2 w-full focus:outline-none focus:ring focus:ring-blue-400 ${className}`}
-      />
-    </label>
+    <input
+      className={`input ${error ? "input--error" : ""} ${className}`}
+      {...rest}
+    />
   );
 }

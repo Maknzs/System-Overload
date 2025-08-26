@@ -1,8 +1,16 @@
 import { useEffect, useReducer, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createDeck, shuffle, CARD } from "../game/cards";
+import {
+  createDeck,
+  shuffle,
+  CARD,
+  CARD_IMG,
+  STOCK_CARD_IMG,
+} from "../game/cards";
 import PrivacyScreen from "../components/PrivacyScreen";
 import Card from "../components/Card";
+import DeckCard from "../components/DeckCard";
+import DiscardPile from "../components/DiscardPile";
 import Button from "../components/Button";
 import { api } from "../api";
 import "./Game.css"; // page styles (section boxes, layout, log, etc.)
@@ -222,6 +230,8 @@ function reducer(state, action) {
         S.players[pid].alive = false;
         S.discard.push(CARD.FATAL);
         S.fatalCard = null;
+        S.phase = PHASE.AWAIT_ACTION;
+        S.peek = [];
         S.log.push(`${S.players[pid].name} exploded and is out!`);
 
         const alive = S.players.filter((p) => p.alive).length;
@@ -294,7 +304,45 @@ export default function Game() {
   }, [game.winner, nav]);
 
   const countAlive = game.players.filter((p) => p.alive).length;
-  const canPlay = (name) => hand.includes(name);
+  const canPlayNow = game.phase === PHASE.AWAIT_ACTION && !hideHand;
+
+  function playCardByName(cardName) {
+    if (!me?.alive) return;
+
+    // If we’re resolving a Fatal, only Reboot makes sense here
+    if (game.phase === PHASE.RESOLVE_FATAL) {
+      if (cardName === CARD.REBOOT) {
+        // Show your “choose position” UI or just reinsert top as example
+        dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
+        dispatch({ type: "REBOOT_INSERT", pos: 0 });
+      }
+      return;
+    }
+
+    if (!canPlayNow) return;
+
+    switch (cardName) {
+      case CARD.SKIP:
+        dispatch({ type: "PLAY_SKIP" });
+        break;
+      case CARD.ATTACK:
+        dispatch({ type: "PLAY_ATTACK" });
+        break;
+      case CARD.SHUFFLE:
+        dispatch({ type: "PLAY_SHUFFLE" });
+        break;
+      case CARD.FUTURE:
+        dispatch({ type: "PLAY_FUTURE" });
+        break;
+      case CARD.FAVOR:
+        dispatch({ type: "PLAY_FAVOR" });
+        break;
+      // REBOOT is not playable during normal flow (only after a Fatal draw)
+      default:
+        // do nothing for non-action or unsupported card
+        break;
+    }
+  }
 
   function onResolveFatal() {
     dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
@@ -328,71 +376,35 @@ export default function Game() {
         onContinue={() => setHideHand(false)}
       />
 
-      {/* Actions */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title">Actions</div>
-        <div className="hstack">
-          <Button
-            onClick={() => dispatch({ type: "DRAW" })}
+      {/* Deck / Discard */}
+      <div className="deck-area">
+        <div className="card deck-area__left">
+          <div>
+            <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
+              {game.deck.length}
+            </div>
+            <div
+              className="section-title"
+              style={{ marginBottom: 15, color: "red" }}
+            >
+              Cards
+              <br />
+              Remain
+              <br />
+              Click →<br />
+              for your <br />
+              FATE
+            </div>
+          </div>
+          <DeckCard
+            count={game.deck.length}
+            onClick={() => dispatch({ type: "DRAW" })} // optional: make clickable
             disabled={hideHand || game.phase !== PHASE.AWAIT_ACTION}
-          >
-            Draw
-          </Button>
+          />
+        </div>
 
-          <Button
-            onClick={() => dispatch({ type: "PLAY_SKIP" })}
-            disabled={
-              hideHand ||
-              !canPlay(CARD.SKIP) ||
-              game.phase !== PHASE.AWAIT_ACTION
-            }
-          >
-            Play {CARD.SKIP}
-          </Button>
-
-          <Button
-            onClick={() => dispatch({ type: "PLAY_ATTACK" })}
-            disabled={
-              hideHand ||
-              !canPlay(CARD.ATTACK) ||
-              game.phase !== PHASE.AWAIT_ACTION
-            }
-          >
-            Play {CARD.ATTACK}
-          </Button>
-
-          <Button
-            onClick={() => dispatch({ type: "PLAY_SHUFFLE" })}
-            disabled={
-              hideHand ||
-              !canPlay(CARD.SHUFFLE) ||
-              game.phase !== PHASE.AWAIT_ACTION
-            }
-          >
-            Play {CARD.SHUFFLE}
-          </Button>
-
-          <Button
-            onClick={() => dispatch({ type: "PLAY_FUTURE" })}
-            disabled={
-              hideHand ||
-              !canPlay(CARD.FUTURE) ||
-              game.phase !== PHASE.AWAIT_ACTION
-            }
-          >
-            Run {CARD.FUTURE}
-          </Button>
-
-          <Button
-            onClick={() => dispatch({ type: "PLAY_FAVOR" })}
-            disabled={
-              hideHand ||
-              !canPlay(CARD.FAVOR) ||
-              game.phase !== PHASE.AWAIT_ACTION
-            }
-          >
-            Use {CARD.FAVOR}
-          </Button>
+        <div className="card deck-area__right">
+          <DiscardPile cards={game.discard} maxToShow={10} />
         </div>
       </div>
 
@@ -474,33 +486,35 @@ export default function Game() {
         <div className="section-title">
           {me?.name} — Hand ({hand.length})
         </div>
-        <div className="hstack" style={{ flexWrap: "wrap" }}>
-          {hand.map((c, i) => (
-            <Card key={i} name={c} disabled />
-          ))}
-        </div>
-      </div>
 
-      {/* Deck / Discard */}
-      <div
-        className="hstack"
-        style={{ gap: 12, flexWrap: "wrap", marginBottom: 16 }}
-      >
-        <div className="card" style={{ flex: "1 1 280px" }}>
-          <div className="section-title">Deck</div>
-          <div>
-            <b className="deck-count">{game.deck.length}</b> cards
-          </div>
-        </div>
-        <div className="card" style={{ flex: "1 1 280px" }}>
-          <div className="section-title">Discard</div>
-          <div>{game.discard.slice(-5).join(" • ") || "—"}</div>
+        <div className="hstack" style={{ flexWrap: "wrap" }}>
+          {hand.map((c, i) => {
+            const isPlayable =
+              game.phase === PHASE.AWAIT_ACTION &&
+              !hideHand &&
+              (c === CARD.SKIP ||
+                c === CARD.ATTACK ||
+                c === CARD.SHUFFLE ||
+                c === CARD.FUTURE ||
+                c === CARD.FAVOR);
+
+            return (
+              <Card
+                key={i}
+                name={c}
+                size="hand"
+                faceDown={hideHand} // <— NEW
+                onClick={isPlayable ? () => playCardByName(c) : undefined}
+                disabled={!isPlayable}
+              />
+            );
+          })}
         </div>
       </div>
 
       {/* Log with per-viewer visibility */}
       <div className="card">
-        <div className="section-title">Log</div>
+        <div className="section-title">Game Log</div>
         {(() => {
           const viewerId = me?.id;
           const visible = game.log.filter((entry) => {

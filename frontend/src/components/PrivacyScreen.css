@@ -1,0 +1,41 @@
+.ps-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 8, 20, 0.1);
+  backdrop-filter: blur(6px) saturate(120%);
+  z-index: 50;
+  animation: psFade 0.15s ease-out both;
+}
+@keyframes psFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ps-modal {
+  width: min(480px, 92vw);
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow);
+  padding: 1.4rem;
+  text-align: center;
+}
+.ps-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0.2rem 0 1rem 0;
+}
+.ps-name {
+  color: var(--accent);
+}
+.ps-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

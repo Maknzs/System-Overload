@@ -1,9 +1,17 @@
-export default function Button({ children, className = "", ...props }) {
+import React from "react";
+import "./Button.css";
+
+export default function Button({ children, kind, className = "", ...rest }) {
+  const k =
+    kind === "ghost"
+      ? "btn--ghost"
+      : kind === "danger"
+      ? "btn--danger"
+      : kind === "success"
+      ? "btn--success"
+      : "";
   return (
-    <button
-      {...props}
-      className={`bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-    >
+    <button className={`btn ${k} ${className}`} {...rest}>
       {children}
     </button>
   );

@@ -1,4 +1,15 @@
 // System Overload cards (no "Override")
+import fatal from "../assets/cards/FatalServerError.png";
+import reboot from "../assets/cards/Reboot.png";
+import skip from "../assets/cards/SecurityPatch.png";
+import attack from "../assets/cards/DDoS.png";
+import shuffleImg from "../assets/cards/SudoRandom.png";
+import future from "../assets/cards/HealthCheck.png";
+import favor from "../assets/cards/Hack.png";
+import system from "../assets/cards/SystemOverload.png";
+
+export const STOCK_CARD_IMG = system;
+
 export const CARD = {
   FATAL: "Fatal Server Error",
   REBOOT: "Reboot",
@@ -51,3 +62,13 @@ export function shuffle(arr) {
   }
   return a;
 }
+
+export const CARD_IMG = {
+  [CARD.FATAL]: fatal,
+  [CARD.REBOOT]: reboot,
+  [CARD.SKIP]: skip,
+  [CARD.ATTACK]: attack,
+  [CARD.SHUFFLE]: shuffleImg,
+  [CARD.FUTURE]: future,
+  [CARD.FAVOR]: favor,
+};

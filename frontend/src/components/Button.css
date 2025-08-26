@@ -1,0 +1,50 @@
+.btn {
+  --btn-bg: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  --btn-text: #0a1027;
+  --btn-bg-disabled: #22305f;
+  --btn-text-disabled: #8ea0d8;
+
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--btn-text);
+  background: var(--btn-bg);
+  box-shadow: var(--shadow);
+  transform: translateZ(0);
+  transition: transform 0.08s ease, filter 0.16s ease, box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:hover {
+  filter: brightness(1.04) saturate(1.05);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus), var(--shadow);
+}
+.btn[disabled] {
+  background: var(--btn-bg-disabled);
+  color: var(--btn-text-disabled);
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn--danger {
+  --btn-bg: linear-gradient(135deg, #ff8aa3, var(--danger));
+}
+.btn--success {
+  --btn-bg: linear-gradient(135deg, #67f1c2, var(--success));
+}
