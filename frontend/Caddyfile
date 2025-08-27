@@ -1,13 +1,14 @@
 snodgrass.ai, www.snodgrass.ai {
-encode gzip
-root \* /usr/share/caddy
-file_server
-try_files {path} /index.html
+    encode gzip
+    root * /usr/share/caddy
+    file_server
 
-@api path /api/\*
-reverse_proxy @api http://api:8080 {
-header_up Host {host}
-header_up X-Real-IP {remote}
-header_up X-Forwarded-Proto {scheme} # transport http { versions 1.1 } # keep if your upstream prefers h1
-}
+    try_files {path} /index.html
+
+    @api path /api/*
+    reverse_proxy @api http://systemoverload-api-1:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
