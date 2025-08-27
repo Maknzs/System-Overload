@@ -1,18 +1,16 @@
 snodgrass.ai, www.snodgrass.ai {
     encode gzip
-    root * /usr/share/caddy
-    file_server
 
-    try_files {path} /index.html
-
-    @api {
-        path /api/*
-        method GET POST PUT DELETE OPTIONS
+    # 1) Proxy all /api/* (any method) to the API container
+    @api path /api/*
+    handle @api {
+        reverse_proxy http://systemoverload-api-1:8080
     }
 
-    reverse_proxy @api http://systemoverload-api-1:8080 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-Proto {scheme}
+    # 2) Static site for everything else (SPA-friendly)
+    handle {
+        root * /usr/share/caddy
+        try_files {path} /index.html
+        file_server
     }
 }
