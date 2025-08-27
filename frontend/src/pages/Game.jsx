@@ -21,7 +21,6 @@ const PHASE = {
   AWAIT_ACTION: "AWAIT_ACTION",
   RESOLVE_FATAL: "RESOLVE_FATAL",
   CHOOSING_FAVOR: "CHOOSING_FAVOR",
-  CHOOSING_COMBO_TARGET: "CHOOSING_COMBO_TARGET",
   CHOOSING_PAIR_TARGET: "CHOOSING_PAIR_TARGET",
   CHOOSING_PAIR_CARD: "CHOOSING_PAIR_CARD",
   CHOOSING_TRIPLE_TARGET: "CHOOSING_TRIPLE_TARGET",
@@ -259,48 +258,81 @@ function reducer(state, action) {
       return S;
     }
 
-    case "PLAY_COMBO": {
+    case "START_COMBO": {
       const pid = S.turn;
-      const card = action.card;
-      const count = S.hands[pid].filter((c) => c === card).length;
-      let type = null;
-      if (count >= 3) type = "triple";
-      else if (count >= 2) type = "pair";
-      if (!type) return S;
-
-      const removeCount = type === "triple" ? 3 : 2;
+      const { cardName, mode } = action;
+      const removeCount = mode === "TRIPLE" ? 3 : 2;
       for (let k = 0; k < removeCount; k++) {
-        const idx = S.hands[pid].indexOf(card);
+        const idx = S.hands[pid].indexOf(cardName);
         if (idx !== -1) S.hands[pid].splice(idx, 1);
-        S.discard.push(card);
+        S.discard.push(cardName);
       }
-
-      S.phase = PHASE.CHOOSING_COMBO_TARGET;
-      S.combo = { type };
+      S.combo = { type: mode, card: cardName };
+      S.comboTarget = null;
+      S.phase =
+        mode === "TRIPLE"
+          ? PHASE.CHOOSING_TRIPLE_TARGET
+          : PHASE.CHOOSING_PAIR_TARGET;
       S.log.push(
-        `${S.players[pid].name} played a ${type} of ${card}. Choose a player to steal a random card.`
+        `${S.players[pid].name} played a ${mode.toLowerCase()} of ${cardName}.`
       );
       return S;
     }
 
-    case "RESOLVE_COMBO_FROM": {
+    case "RESOLVE_PAIR_TARGET": {
       const toId = action.toId;
-      const fromId = S.turn;
+      S.comboTarget = toId;
+      S.hands[toId] = shuffle(S.hands[toId]);
+      S.phase = PHASE.CHOOSING_PAIR_CARD;
+      return S;
+    }
+
+    case "RESOLVE_PAIR_FROM": {
+      const pid = S.turn;
+      const toId = S.comboTarget;
       const opp = S.hands[toId];
 
       if (opp.length === 0) {
-        S.log.push(`${S.players[toId].name} has no cards to steal.`);
+        S.log.push(`${S.players[toId].name} had no cards to steal.`);
       } else {
-        const idx = Math.floor(Math.random() * opp.length);
+        const idx = Math.min(action.index, opp.length - 1);
         const given = opp.splice(idx, 1)[0];
-        S.hands[fromId].push(given);
+        S.hands[pid].push(given);
         S.log.push(
-          `${S.players[fromId].name} stole a random card from ${S.players[toId].name}.`
+          `${S.players[pid].name} stole a card from ${S.players[toId].name}.`
         );
       }
 
-      S.phase = PHASE.AWAIT_ACTION;
+      S.comboTarget = null;
       S.combo = null;
+      S.phase = PHASE.AWAIT_ACTION;
+      return S;
+    }
+
+    case "RESOLVE_TRIPLE_TARGET": {
+      S.comboTarget = action.toId;
+      S.phase = PHASE.CHOOSING_TRIPLE_CARD;
+      return S;
+    }
+
+    case "RESOLVE_TRIPLE_NAME": {
+      const pid = S.turn;
+      const toId = S.comboTarget;
+      const cardName = action.cardName;
+      const opp = S.hands[toId];
+      const idx = opp.indexOf(cardName);
+      if (idx !== -1) {
+        opp.splice(idx, 1);
+        S.hands[pid].push(cardName);
+        S.log.push(
+          `${S.players[pid].name} received ${cardName} from ${S.players[toId].name}.`
+        );
+      } else {
+        S.log.push(`${S.players[toId].name} did not have ${cardName}.`);
+      }
+      S.comboTarget = null;
+      S.combo = null;
+      S.phase = PHASE.AWAIT_ACTION;
       return S;
     }
 
@@ -362,6 +394,8 @@ export default function Game() {
 
   const [game, dispatch] = useReducer(reducer, initialState(names));
   const [hideHand, setHideHand] = useState(true);
+  const [pendingComboCard, setPendingComboCard] = useState(null);
+  const [showPeekModal, setShowPeekModal] = useState(false);
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
@@ -395,6 +429,16 @@ export default function Game() {
   useEffect(() => {
     setHideHand(true);
   }, [game.turn]);
+
+  // Show Health Check modal with top 3 cards
+  useEffect(() => {
+    if (game.peek.length > 0) {
+      setShowPeekModal(true);
+      const timer = setTimeout(() => setShowPeekModal(false), 10000);
+      return () => clearTimeout(timer);
+    }
+    setShowPeekModal(false);
+  }, [game.peek]);
 
   // Winner flow
   useEffect(() => {
@@ -447,7 +491,10 @@ export default function Game() {
       default:
         // do nothing for non-action or unsupported card
         if (COMBO_CARDS.includes(cardName)) {
-          dispatch({ type: "PLAY_COMBO", card: cardName });
+          const count = game.hands[game.turn].filter(
+            (h) => h === cardName
+          ).length;
+          triggerCombo(cardName, count);
         }
         break;
     }
@@ -455,10 +502,10 @@ export default function Game() {
 
   function triggerCombo(cardName, count) {
     if (!canPlayNow) return;
-    let mode = "PAIR";
     if (count >= 3) {
-      const useTriple = window.confirm("Use triple action? Cancel for pair.");
-      mode = useTriple ? "TRIPLE" : "PAIR";
+      setPendingComboCard(cardName);
+    } else if (count === 2) {
+      dispatch({ type: "START_COMBO", cardName, mode: "PAIR" });
     }
     dispatch({ type: "START_COMBO", cardName, mode });
   }
@@ -527,13 +574,18 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Health Check peek */}
-      {game.peek.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="section-title">Health Check (top 3)</div>
-          <div>{[...game.peek].reverse().join(" • ")}</div>
+      {/* Health Check modal */}
+      <Modal show={showPeekModal}>
+        <div className="section-title">Health Check (top 3)</div>
+        <div className="hstack" style={{ justifyContent: "center" }}>
+          {[...game.peek].reverse().map((c, i) => (
+            <Card key={i} name={c} />
+          ))}
         </div>
-      )}
+        <div style={{ marginTop: 12 }}>
+          <Button onClick={() => setShowPeekModal(false)}>Close</Button>
+        </div>
+      </Modal>
 
       {/* Fatal resolution */}
       <Modal show={game.phase === PHASE.RESOLVE_FATAL}>
@@ -592,24 +644,37 @@ export default function Game() {
         </div>
       </Modal>
 
-      {/* Combo target selection */}
-      <Modal show={game.phase === PHASE.CHOOSING_COMBO_TARGET}>
+      {/* Choose pair or triple */}
+      <Modal show={pendingComboCard !== null}>
         <div className="section-title">
-          Choose a player to steal a random card from
+          Use {pendingComboCard} as a pair or triple?
         </div>
         <div className="hstack">
-          {game.players
-            .filter((p) => p.alive && p.id !== game.turn)
-            .map((p) => (
-              <Button
-                key={p.id}
-                onClick={() =>
-                  dispatch({ type: "RESOLVE_COMBO_FROM", toId: p.id })
-                }
-              >
-                {p.name}
-              </Button>
-            ))}
+          <Button
+            onClick={() => {
+              dispatch({
+                type: "START_COMBO",
+                cardName: pendingComboCard,
+                mode: "PAIR",
+              });
+              setPendingComboCard(null);
+            }}
+          >
+            Pair
+          </Button>
+          <Button
+            onClick={() => {
+              dispatch({
+                type: "START_COMBO",
+                cardName: pendingComboCard,
+                mode: "TRIPLE",
+              });
+              setPendingComboCard(null);
+            }}
+          >
+            Triple
+          </Button>
+          <Button onClick={() => setPendingComboCard(null)}>Cancel</Button>
         </div>
       </Modal>
 

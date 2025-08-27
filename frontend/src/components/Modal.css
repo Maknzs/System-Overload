@@ -18,7 +18,7 @@
 }
 
 .modal-content {
-  width: min(480px, 92vw);
+  width: min(500px, 92vw);
   background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 4px);
