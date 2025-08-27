@@ -5,7 +5,11 @@ snodgrass.ai, www.snodgrass.ai {
 
     try_files {path} /index.html
 
-    @api path /api/*
+    @api {
+        path /api/*
+        method GET POST PUT DELETE OPTIONS
+    }
+
     reverse_proxy @api http://systemoverload-api-1:8080 {
         header_up Host {host}
         header_up X-Real-IP {remote}
