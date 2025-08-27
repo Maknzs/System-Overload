@@ -36,3 +36,32 @@
 .log {
   margin-top: 8px;
 }
+.modal-title {
+  color: red;
+  font-size: 50px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+/* Health Check modal card numbering */
+.peek-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.peek-order {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.hand-stack {
+  position: relative;
+  width: var(--card-hand-w);
+  height: var(--card-hand-h);
+}
+
+.hand-stack > .ui-card {
+  position: absolute;
+  top: 0;
+  left: calc(var(--stack-index) * 20px);
+}

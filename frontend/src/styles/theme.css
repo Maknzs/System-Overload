@@ -76,6 +76,7 @@ body {
   --deck-h: 224px;
 }
 .section-title {
+  font-size: 24px;
   font-weight: 700;
   margin: 0 0 10px;
 }
