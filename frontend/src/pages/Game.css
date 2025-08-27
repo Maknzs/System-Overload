@@ -56,12 +56,15 @@
 
 .hand-stack {
   position: relative;
-  width: var(--card-hand-w);
+  width: calc(
+    var(--card-hand-w) + (var(--stack-count, 1) - 1) *
+      var(--stack-spacing, 20px)
+  );
   height: var(--card-hand-h);
 }
 
 .hand-stack > .ui-card {
   position: absolute;
   top: 0;
-  left: calc(var(--stack-index) * 20px);
+  left: calc(var(--stack-index) * var(--stack-spacing, 20px));
 }

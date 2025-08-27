@@ -1,9 +1,8 @@
 .discard {
   position: relative;
-  display: inline-grid;
-  place-items: center;
+  display: block;
   width: 100%; /* overall footprint */
-  min-height: 210px;
+  min-height: 275px;
   padding: 0;
   background: linear-gradient(
     180deg,
@@ -31,8 +30,8 @@
 .discard__stack {
   position: relative;
   width: 100%; /* use all the available width */
-  height: 150px;
-  margin-top: 25px;
+  height: 175px;
+  margin-top: 0;
   margin-left: 10px;
 }
 
@@ -40,8 +39,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 110px;
-  height: 150px;
+  width: 130px;
+  height: 180px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);

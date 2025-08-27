@@ -171,7 +171,7 @@ body {
   display: grid;
   grid-template-columns: 1fr; /* mobile: stacked */
   gap: 12px;
-  min-height: 250px;
+  min-height: 200px;
   align-items: stretch;
   margin-bottom: 15px;
 }
@@ -179,7 +179,7 @@ body {
 /* ≥ 768px: fixed deck column + fluid discard column */
 @media (min-width: 768px) {
   .deck-area {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 300px 1fr;
   }
 }
 
@@ -196,5 +196,11 @@ body {
 /* Ensure both panels fill their grid cells */
 .deck-area__left,
 .deck-area__right {
+  display: flex;
+  flex-direction: row; /* side-by-side */
+  align-items: center; /* vertically align text and card */
+  justify-content: center; /* center both in the container */
+  gap: 20px; /* space between number/text and the card */
+  text-align: center; /* center text inside the number block */
   height: 100%;
 }

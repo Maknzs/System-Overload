@@ -57,12 +57,10 @@
 :root {
   --card-hand-w: 140px;
   --card-hand-h: 200px;
-  --card-discard-w: 110px;
-  --card-discard-h: 160px;
+  --card-discard-w: 140px;
+  --card-discard-h: 200px;
   --card-deck-w: 170px;
   --card-deck-h: 230px;
-  --card-fatal-w: 340px;
-  --card-fatal-h: 460px;
   --card-radius: 14px;
   --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }

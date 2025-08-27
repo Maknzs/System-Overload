@@ -55,6 +55,8 @@ const HAND_DISPLAY_ORDER = [
   "Coffee Fueled Programmer",
 ];
 
+const STACK_SPACING = 20; // px gap between stacked duplicate cards
+
 function initialState(names) {
   const { deck, hands } = createDeck(names.length);
   return {
@@ -396,9 +398,11 @@ export default function Game() {
   const [hideHand, setHideHand] = useState(true);
   const [pendingComboCard, setPendingComboCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
+  const [flipFatal, setFlipFatal] = useState(false);
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
+  const hasReboot = hand.includes(CARD.REBOOT);
   const sortedHand = [...hand].sort((a, b) => {
     const ai = HAND_DISPLAY_ORDER.indexOf(a);
     const bi = HAND_DISPLAY_ORDER.indexOf(b);
@@ -460,6 +464,20 @@ export default function Game() {
       })();
     }
   }, [game.winner, nav]);
+
+  // Flip fatal card when no Reboot available
+  useEffect(() => {
+    if (game.phase === PHASE.RESOLVE_FATAL && !hasReboot) {
+      const interval = setInterval(() => setFlipFatal((f) => !f), 750);
+      return () => clearInterval(interval);
+    }
+    setFlipFatal(false);
+  }, [game.phase, hasReboot]);
+
+  const fatalCardSrc =
+    game.phase === PHASE.RESOLVE_FATAL && !hasReboot && flipFatal
+      ? STOCK_CARD_IMG
+      : CARD_IMG[CARD.FATAL];
 
   const countAlive = game.players.filter((p) => p.alive).length;
   const canPlayNow = game.phase === PHASE.AWAIT_ACTION && !hideHand;
@@ -559,10 +577,7 @@ export default function Game() {
             <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
               {game.deck.length}
             </div>
-            <div
-              className="section-title"
-              style={{ marginBottom: 15, color: "red" }}
-            >
+            <div className="section-title" style={{ color: "red" }}>
               Cards
               <br />
               Remain
@@ -611,18 +626,19 @@ export default function Game() {
             name={CARD.FATAL}
             size="deck"
             disabled
+            src={fatalCardSrc}
             style={{
               width: "calc(var(--card-deck-w) * 2)",
               height: "calc(var(--card-deck-h) * 2)",
             }}
           />
         </div>
-        {hand.includes(CARD.REBOOT) ? (
+        {hasReboot ? (
           <>
             <div className="subtle" style={{ marginBottom: 10 }}>
               Use {CARD.REBOOT} and choose where to put the Fatal back:
             </div>
-            <div className="hstack">
+            <div className="hstack" style={{ justifyContent: "center" }}>
               {Array.from({ length: game.deck.length + 1 }).map((_, pos) => (
                 <Button
                   key={pos}
@@ -807,7 +823,10 @@ export default function Game() {
           {me?.name} — Hand ({hand.length})
         </div>
 
-        <div className="hstack" style={{ flexWrap: "wrap", gap: 0 }}>
+        <div
+          className="hstack"
+          style={{ flexWrap: "wrap", columnGap: 0, rowGap: 8 }}
+        >
           {groupedHand.map(({ card: c, count }, i) => {
             const isPlayable =
               game.phase === PHASE.AWAIT_ACTION &&
@@ -833,7 +852,14 @@ export default function Game() {
             }
 
             return (
-              <div className="hand-stack" key={i}>
+              <div
+                className="hand-stack"
+                key={i}
+                style={{
+                  "--stack-count": count,
+                  "--stack-spacing": `${STACK_SPACING}px`,
+                }}
+              >
                 {Array.from({ length: count }).map((_, j) => (
                   <Card
                     key={j}
