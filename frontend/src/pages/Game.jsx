@@ -21,6 +21,20 @@ const PHASE = {
   CHOOSING_FAVOR: "CHOOSING_FAVOR",
 };
 
+const HAND_DISPLAY_ORDER = [
+  CARD.REBOOT,
+  CARD.SKIP,
+  CARD.ATTACK,
+  CARD.SHUFFLE,
+  CARD.FUTURE,
+  CARD.FAVOR,
+  "Tampered Data Log",
+  "New Error Code",
+  "Valid Credentials?",
+  "Rogue Anti-virus Software",
+  "Coffee Fueled Programmer",
+];
+
 function initialState(names) {
   const { deck, hands } = createDeck(names.length);
   return {
@@ -86,6 +100,12 @@ function advanceTurn(S) {
   S.turnsToTake = 1;
   S.peek = [];
   return S;
+}
+
+function ordinal(n) {
+  const s = ["th", "st", "nd", "rd"],
+    v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 function reducer(state, action) {
@@ -277,6 +297,14 @@ export default function Game() {
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
+  const sortedHand = [...hand].sort((a, b) => {
+    const ai = HAND_DISPLAY_ORDER.indexOf(a);
+    const bi = HAND_DISPLAY_ORDER.indexOf(b);
+    const aIndex = ai === -1 ? Number.MAX_VALUE : ai;
+    const bIndex = bi === -1 ? Number.MAX_VALUE : bi;
+    if (aIndex === bIndex) return 0;
+    return aIndex - bIndex;
+  });
 
   // Init once
   useEffect(() => {
@@ -426,7 +454,7 @@ export default function Game() {
                 Use {CARD.REBOOT} and choose where to put the Fatal back:
               </div>
               <div className="hstack">
-                {[0, 1, 2, 3].map((pos) => (
+                {Array.from({ length: game.deck.length + 1 }).map((_, pos) => (
                   <Button
                     key={pos}
                     onClick={() => {
@@ -434,17 +462,13 @@ export default function Game() {
                       onReinsert(pos);
                     }}
                   >
-                    {pos === 0 ? "Top" : `+${pos} deep`}
+                    {pos === 0
+                      ? "Top"
+                      : pos === game.deck.length
+                      ? "Bottom"
+                      : ordinal(pos + 1)}
                   </Button>
                 ))}
-                <Button
-                  onClick={() => {
-                    dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
-                    onReinsert(game.deck.length);
-                  }}
-                >
-                  Bottom
-                </Button>
               </div>
             </>
           ) : (
@@ -488,7 +512,7 @@ export default function Game() {
         </div>
 
         <div className="hstack" style={{ flexWrap: "wrap" }}>
-          {hand.map((c, i) => {
+          {sortedHand.map((c, i) => {
             const isPlayable =
               game.phase === PHASE.AWAIT_ACTION &&
               !hideHand &&

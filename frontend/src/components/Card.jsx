@@ -11,6 +11,7 @@ export default function Card({
   faceDown = false,
   src,
   title,
+  style,
 }) {
   const imgSrc = faceDown
     ? STOCK_CARD_IMG
@@ -26,6 +27,7 @@ export default function Card({
       // hide the real card name when face-down
       title={faceDown ? "Hidden card" : title || name}
       aria-label={faceDown ? "Hidden card" : title || name}
+      style={style}
     >
       <img src={imgSrc} alt={faceDown ? "Hidden card" : name} />
     </button>
