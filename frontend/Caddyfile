@@ -1,19 +1,14 @@
-{
-  auto_https off
-}
+snodgrass.ai, www.snodgrass.ai {
+    encode gzip
+    root * /usr/share/caddy
+    file_server
 
-http://snodgrass.ai, http://www.snodgrass.ai {
-  encode gzip
+    try_files {path} /index.html
 
-  root * /usr/share/caddy
-  file_server
-  try_files {path} /index.html
-
-  @api path /api/*
-  reverse_proxy @api http://api:8080 {
-    header_up Host {host}
-    header_up X-Real-IP {remote}
-    header_up X-Forwarded-Proto {scheme}
-    # transport http { versions 1.1 }  # optional
-  }
+    @api path /api/*
+    reverse_proxy @api http://systemoverload-api-1:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
