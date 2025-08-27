@@ -8,6 +8,10 @@ import future from "../assets/cards/HealthCheck.png";
 import favor from "../assets/cards/Hack.png";
 import system from "../assets/cards/SystemOverload.png";
 import log from "../assets/cards/TamperedDataLog.png";
+import newCode from "../assets/cards/NewErrorCode.png";
+import valid from "../assets/cards/ValidCredentials.png";
+import rogue from "../assets/cards/RogueSoftware.png";
+import fuel from "../assets/cards/CoffeeFueledProgrammer.png";
 
 export const STOCK_CARD_IMG = system;
 
@@ -19,19 +23,19 @@ export const CARD = {
   SHUFFLE: "Sudo Random",
   FUTURE: "Health Check",
   FAVOR: "Hack",
-  TAMPERED_LOG: "Tampered Data Log",
-  NEW_ERROR_CODE: "New Error Code",
-  VALID_CREDENTIALS: "Valid Credentials?",
-  ROGUE_ANTIVIRUS: "Rogue Anti-virus Software",
-  COFFEE_PROGRAMMER: "Coffee Fueled Programmer",
+  TAMPERED: "Tampered Data Log",
+  NEW_ERROR: "New Error Code",
+  VALID_CREDS: "Valid Credentials?",
+  ROGUE_AV: "Rogue Anti-virus Software",
+  COFFEE: "Coffee Fueled Programmer",
 };
 
 export const COMBO_CARDS = [
-  CARD.TAMPERED_LOG,
-  CARD.NEW_ERROR_CODE,
-  CARD.VALID_CREDENTIALS,
-  CARD.ROGUE_ANTIVIRUS,
-  CARD.COFFEE_PROGRAMMER,
+  CARD.TAMPERED,
+  CARD.NEW_ERROR,
+  CARD.VALID_CREDS,
+  CARD.ROGUE_AV,
+  CARD.COFFEE,
 ];
 
 export function createDeck(playerCount) {
@@ -44,11 +48,11 @@ export function createDeck(playerCount) {
     ...Array(playerCount < 4 ? 4 : 5).fill(CARD.FUTURE),
     ...Array(playerCount < 4 ? 3 : 4).fill(CARD.FAVOR),
     // Pair/triple-only combos
-    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.TAMPERED_LOG),
-    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.NEW_ERROR_CODE),
-    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.VALID_CREDENTIALS),
-    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.ROGUE_ANTIVIRUS),
-    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.COFFEE_PROGRAMMER),
+    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.TAMPERED),
+    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.NEW_ERROR),
+    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.VALID_CREDS),
+    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.ROGUE_AV),
+    ...Array(playerCount < 4 ? 3 : 4).fill(CARD.COFFEE),
   ];
   // Shuffle base
   const deck = shuffle(base);
@@ -91,10 +95,9 @@ export const CARD_IMG = {
   [CARD.SHUFFLE]: shuffleImg,
   [CARD.FUTURE]: future,
   [CARD.FAVOR]: favor,
-  // Default stock image for combo cards
-  [CARD.TAMPERED_LOG]: STOCK_CARD_IMG,
-  [CARD.NEW_ERROR_CODE]: STOCK_CARD_IMG,
-  [CARD.VALID_CREDENTIALS]: STOCK_CARD_IMG,
-  [CARD.ROGUE_ANTIVIRUS]: STOCK_CARD_IMG,
-  [CARD.COFFEE_PROGRAMMER]: log,
+  [CARD.TAMPERED]: log,
+  [CARD.NEW_ERROR]: newCode,
+  [CARD.VALID_CREDS]: valid,
+  [CARD.ROGUE_AV]: rogue,
+  [CARD.COFFEE]: fuel,
 };

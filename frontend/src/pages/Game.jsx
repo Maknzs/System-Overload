@@ -6,12 +6,14 @@ import {
   CARD,
   CARD_IMG,
   STOCK_CARD_IMG,
+  COMBO_CARDS,
 } from "../game/cards";
 import PrivacyScreen from "../components/PrivacyScreen";
 import Card from "../components/Card";
 import DeckCard from "../components/DeckCard";
 import DiscardPile from "../components/DiscardPile";
 import Button from "../components/Button";
+import Modal from "../components/Modal";
 import { api } from "../api";
 import "./Game.css"; // page styles (section boxes, layout, log, etc.)
 
@@ -19,7 +21,26 @@ const PHASE = {
   AWAIT_ACTION: "AWAIT_ACTION",
   RESOLVE_FATAL: "RESOLVE_FATAL",
   CHOOSING_FAVOR: "CHOOSING_FAVOR",
+  CHOOSING_COMBO_TARGET: "CHOOSING_COMBO_TARGET",
+  CHOOSING_PAIR_TARGET: "CHOOSING_PAIR_TARGET",
+  CHOOSING_PAIR_CARD: "CHOOSING_PAIR_CARD",
+  CHOOSING_TRIPLE_TARGET: "CHOOSING_TRIPLE_TARGET",
+  CHOOSING_TRIPLE_CARD: "CHOOSING_TRIPLE_CARD",
 };
+
+const REQUESTABLE_CARDS = [
+  CARD.REBOOT,
+  CARD.SKIP,
+  CARD.ATTACK,
+  CARD.SHUFFLE,
+  CARD.FUTURE,
+  CARD.FAVOR,
+  CARD.TAMPERED,
+  CARD.NEW_ERROR,
+  CARD.VALID_CREDS,
+  CARD.ROGUE_AV,
+  CARD.COFFEE,
+];
 
 const HAND_DISPLAY_ORDER = [
   CARD.REBOOT,
@@ -47,12 +68,14 @@ function initialState(names) {
     peek: [], // Health Check preview (top 3)
     log: [],
     phase: PHASE.AWAIT_ACTION,
+    combo: null,
 
     // Attack handoff
     pendingExtraTurnsFor: null, // who will receive extra turns next
     extraTurns: 0,
 
-    // fatal handling
+    // combo/fatal/winner handling
+    comboTarget: null,
     fatalCard: null,
     winner: null,
   };
@@ -236,6 +259,51 @@ function reducer(state, action) {
       return S;
     }
 
+    case "PLAY_COMBO": {
+      const pid = S.turn;
+      const card = action.card;
+      const count = S.hands[pid].filter((c) => c === card).length;
+      let type = null;
+      if (count >= 3) type = "triple";
+      else if (count >= 2) type = "pair";
+      if (!type) return S;
+
+      const removeCount = type === "triple" ? 3 : 2;
+      for (let k = 0; k < removeCount; k++) {
+        const idx = S.hands[pid].indexOf(card);
+        if (idx !== -1) S.hands[pid].splice(idx, 1);
+        S.discard.push(card);
+      }
+
+      S.phase = PHASE.CHOOSING_COMBO_TARGET;
+      S.combo = { type };
+      S.log.push(
+        `${S.players[pid].name} played a ${type} of ${card}. Choose a player to steal a random card.`
+      );
+      return S;
+    }
+
+    case "RESOLVE_COMBO_FROM": {
+      const toId = action.toId;
+      const fromId = S.turn;
+      const opp = S.hands[toId];
+
+      if (opp.length === 0) {
+        S.log.push(`${S.players[toId].name} has no cards to steal.`);
+      } else {
+        const idx = Math.floor(Math.random() * opp.length);
+        const given = opp.splice(idx, 1)[0];
+        S.hands[fromId].push(given);
+        S.log.push(
+          `${S.players[fromId].name} stole a random card from ${S.players[toId].name}.`
+        );
+      }
+
+      S.phase = PHASE.AWAIT_ACTION;
+      S.combo = null;
+      return S;
+    }
+
     case "USE_REBOOT_OR_EXPLODE": {
       const pid = S.turn;
       const idx = S.hands[pid].indexOf(CARD.REBOOT);
@@ -306,6 +374,16 @@ export default function Game() {
     return aIndex - bIndex;
   });
 
+  const CARD_STACK_OFFSET = 120;
+
+  const comboCounts = hand.reduce((a, c) => {
+    a[c] = (a[c] || 0) + 1;
+    return a;
+  }, {});
+  const comboOptions = Object.entries(comboCounts).filter(
+    ([, count]) => count >= 2
+  );
+
   // Init once
   useEffect(() => {
     dispatch({ type: "INIT", names });
@@ -368,8 +446,21 @@ export default function Game() {
       // REBOOT is not playable during normal flow (only after a Fatal draw)
       default:
         // do nothing for non-action or unsupported card
+        if (COMBO_CARDS.includes(cardName)) {
+          dispatch({ type: "PLAY_COMBO", card: cardName });
+        }
         break;
     }
+  }
+
+  function triggerCombo(cardName, count) {
+    if (!canPlayNow) return;
+    let mode = "PAIR";
+    if (count >= 3) {
+      const useTriple = window.confirm("Use triple action? Cancel for pair.");
+      mode = useTriple ? "TRIPLE" : "PAIR";
+    }
+    dispatch({ type: "START_COMBO", cardName, mode });
   }
 
   function onResolveFatal() {
@@ -445,48 +536,87 @@ export default function Game() {
       )}
 
       {/* Fatal resolution */}
-      {game.phase === PHASE.RESOLVE_FATAL && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="section-title">You drew a {CARD.FATAL}!</div>
-          {hand.includes(CARD.REBOOT) ? (
-            <>
-              <div className="subtle" style={{ marginBottom: 10 }}>
-                Use {CARD.REBOOT} and choose where to put the Fatal back:
-              </div>
-              <div className="hstack">
-                {Array.from({ length: game.deck.length + 1 }).map((_, pos) => (
-                  <Button
-                    key={pos}
-                    onClick={() => {
-                      dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
-                      onReinsert(pos);
-                    }}
-                  >
-                    {pos === 0
-                      ? "Top"
-                      : pos === game.deck.length
-                      ? "Bottom"
-                      : ordinal(pos + 1)}
-                  </Button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="subtle" style={{ marginBottom: 10 }}>
-                No {CARD.REBOOT} available. You explode.
-              </div>
-              <Button onClick={onResolveFatal}>Continue</Button>
-            </>
-          )}
-        </div>
-      )}
+      <Modal show={game.phase === PHASE.RESOLVE_FATAL}>
+        <div className="section-title">You drew a {CARD.FATAL}!</div>
+        {hand.includes(CARD.REBOOT) ? (
+          <>
+            <div className="subtle" style={{ marginBottom: 10 }}>
+              Use {CARD.REBOOT} and choose where to put the Fatal back:
+            </div>
+            <div className="hstack">
+              {Array.from({ length: game.deck.length + 1 }).map((_, pos) => (
+                <Button
+                  key={pos}
+                  onClick={() => {
+                    dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
+                    onReinsert(pos);
+                  }}
+                >
+                  {pos === 0
+                    ? "Top"
+                    : pos === game.deck.length
+                    ? "Bottom"
+                    : ordinal(pos + 1)}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="subtle" style={{ marginBottom: 10 }}>
+              No {CARD.REBOOT} available. You explode.
+            </div>
+            <Button onClick={onResolveFatal}>Continue</Button>
+          </>
+        )}
+      </Modal>
 
       {/* Favor target selection */}
-      {game.phase === PHASE.CHOOSING_FAVOR && (
+      <Modal show={game.phase === PHASE.CHOOSING_FAVOR}>
+        <div className="section-title">
+          Choose a player to take a random card from
+        </div>
+        <div className="hstack">
+          {game.players
+            .filter((p) => p.alive && p.id !== game.turn)
+            .map((p) => (
+              <Button
+                key={p.id}
+                onClick={() =>
+                  dispatch({ type: "RESOLVE_FAVOR_FROM", toId: p.id })
+                }
+              >
+                {p.name}
+              </Button>
+            ))}
+        </div>
+      </Modal>
+
+      {/* Combo target selection */}
+      <Modal show={game.phase === PHASE.CHOOSING_COMBO_TARGET}>
+        <div className="section-title">
+          Choose a player to steal a random card from
+        </div>
+        <div className="hstack">
+          {game.players
+            .filter((p) => p.alive && p.id !== game.turn)
+            .map((p) => (
+              <Button
+                key={p.id}
+                onClick={() =>
+                  dispatch({ type: "RESOLVE_COMBO_FROM", toId: p.id })
+                }
+              >
+                {p.name}
+              </Button>
+            ))}
+        </div>
+      </Modal>
+
+      {game.phase === PHASE.CHOOSING_PAIR_TARGET && (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="section-title">
-            Choose a player to take a random card from
+            Choose a player to steal a card from
           </div>
           <div className="hstack">
             {game.players
@@ -495,12 +625,74 @@ export default function Game() {
                 <Button
                   key={p.id}
                   onClick={() =>
-                    dispatch({ type: "RESOLVE_FAVOR_FROM", toId: p.id })
+                    dispatch({ type: "RESOLVE_PAIR_TARGET", toId: p.id })
                   }
                 >
                   {p.name}
                 </Button>
               ))}
+          </div>
+        </div>
+      )}
+
+      {game.phase === PHASE.CHOOSING_PAIR_CARD && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title">
+            Choose a card from {game.players[game.comboTarget].name}
+          </div>
+          <div className="hstack">
+            {game.hands[game.comboTarget].map((_, i) => (
+              <Card
+                key={i}
+                name="Hidden"
+                faceDown
+                allowClickWhenFaceDown
+                onClick={() =>
+                  dispatch({ type: "RESOLVE_PAIR_FROM", index: i })
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {game.phase === PHASE.CHOOSING_TRIPLE_TARGET && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title">
+            Choose a player to request a specific card from
+          </div>
+          <div className="hstack">
+            {game.players
+              .filter((p) => p.alive && p.id !== game.turn)
+              .map((p) => (
+                <Button
+                  key={p.id}
+                  onClick={() =>
+                    dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId: p.id })
+                  }
+                >
+                  {p.name}
+                </Button>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {game.phase === PHASE.CHOOSING_TRIPLE_CARD && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title">
+            Request a card from {game.players[game.comboTarget].name}
+          </div>
+          <div className="hstack" style={{ flexWrap: "wrap" }}>
+            {REQUESTABLE_CARDS.map((n) => (
+              <Card
+                key={n}
+                name={n}
+                onClick={() =>
+                  dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName: n })
+                }
+              />
+            ))}
           </div>
         </div>
       )}
@@ -511,7 +703,7 @@ export default function Game() {
           {me?.name} — Hand ({hand.length})
         </div>
 
-        <div className="hstack" style={{ flexWrap: "wrap" }}>
+        <div className="hstack" style={{ flexWrap: "wrap", gap: 0 }}>
           {sortedHand.map((c, i) => {
             const isPlayable =
               game.phase === PHASE.AWAIT_ACTION &&
@@ -520,7 +712,13 @@ export default function Game() {
                 c === CARD.ATTACK ||
                 c === CARD.SHUFFLE ||
                 c === CARD.FUTURE ||
-                c === CARD.FAVOR);
+                c === CARD.FAVOR ||
+                (COMBO_CARDS.includes(c) &&
+                  hand.filter((h) => h === c).length >= 2));
+
+            const isDuplicate = i > 0 && c === sortedHand[i - 1];
+            const marginLeft =
+              i === 0 ? 0 : isDuplicate ? -CARD_STACK_OFFSET : 8;
 
             return (
               <Card
@@ -530,6 +728,7 @@ export default function Game() {
                 faceDown={hideHand} // <— NEW
                 onClick={isPlayable ? () => playCardByName(c) : undefined}
                 disabled={!isPlayable}
+                style={{ marginLeft }}
               />
             );
           })}

@@ -9,6 +9,7 @@ export default function Card({
   onClick,
   disabled = false,
   faceDown = false,
+  allowClickWhenFaceDown = false,
   src,
   title,
   style,
@@ -17,7 +18,7 @@ export default function Card({
     ? STOCK_CARD_IMG
     : src || CARD_IMG[name] || STOCK_CARD_IMG;
 
-  const isDisabled = disabled || faceDown;
+  const isDisabled = disabled || (faceDown && !allowClickWhenFaceDown);
 
   return (
     <button
