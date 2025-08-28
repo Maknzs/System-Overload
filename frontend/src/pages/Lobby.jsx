@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import Button from "../components/Button";
+import { useState } from "react";
 import "./Lobby.css";
 
 export default function Lobby({ onStart, onBack }) {

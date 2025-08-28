@@ -1,4 +1,3 @@
-import React from "react";
 import "./DiscardPile.css";
 import { CARD_IMG } from "../game/cards";
 

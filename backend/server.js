@@ -35,5 +35,9 @@ async function start() {
     process.exit(1);
   }
 }
+// Only auto-start when not under test
+if (process.env.NODE_ENV !== 'test') {
+  start();
+}
 
-start();
+module.exports = app;

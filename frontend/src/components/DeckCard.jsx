@@ -1,4 +1,3 @@
-import React from "react";
 import "./DeckCard.css";
 import deckBack from "../assets/cards/SystemOverload.png"; // put an image here
 

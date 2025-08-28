@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2021": true },
+  "extends": ["eslint:recommended"],
+  "plugins": ["react", "react-hooks"],
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "module", "ecmaFeatures": { "jsx": true } },
+  "rules": {
+    "no-unused-vars": ["warn", { "args": "after-used", "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "react/jsx-uses-vars": "error"
+  }
+}

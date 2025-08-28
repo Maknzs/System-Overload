@@ -1,0 +1,15 @@
+{
+  "id": "f1ad1a72-3b03-4b7a-a9d1-1c93c0f5e0a2",
+  "name": "System Overload Local",
+  "values": [
+    { "key": "base_url", "value": "http://localhost:8080/api", "enabled": true },
+    { "key": "email", "value": "player1@example.com", "enabled": true },
+    { "key": "username", "value": "player1", "enabled": true },
+    { "key": "password", "value": "ChangeMe123!", "enabled": true },
+    { "key": "jwt", "value": "", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-08-28T00:00:00.000Z",
+  "_postman_exported_using": "Postman/10"
+}
+

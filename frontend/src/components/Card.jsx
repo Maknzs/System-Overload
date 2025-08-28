@@ -1,6 +1,5 @@
 // components/Card.jsx
 import "./Card.css";
-import React from "react";
 import { CARD_IMG, STOCK_CARD_IMG } from "../game/cards";
 
 export default function Card({

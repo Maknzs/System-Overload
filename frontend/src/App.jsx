@@ -67,54 +67,57 @@ export default function App() {
     nav("/login");
   }, [nav]);
 
-  // small wrappers so we can pass callbacks that navigate
-  const MenuScreen = () => (
-    <Menu user={user} onStart={() => nav("/lobby")} onLogout={handleLogout} />
-  );
-
-  const LobbyScreen = () => (
-    <Lobby
-      onStart={(players) => {
-        const names = players.map((p) => p.name);
-        nav("/game", { state: { names } });
-      }}
-      onBack={() => nav("/")}
-    />
-  );
-
-  const LoginScreen = () => (
-    <Login
-      onLogin={handleLogin}
-      goRegister={() => nav("/register")}
-      goGuest={handleGuest}
-    />
-  );
-
-  const RegisterScreen = () => (
-    <Register
-      goLogin={() => nav("/login")}
-      onRegistered={() => nav("/login")}
-    />
-  );
-
   return (
     <Routes>
       <Route
         path="/"
-        element={authed ? <MenuScreen /> : <Navigate to="/login" replace />}
+        element={
+          authed ? (
+            <Menu
+              user={user}
+              onStart={() => nav("/lobby")}
+              onLogout={handleLogout}
+              onUserUpdate={setUser}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/lobby"
         element={
-          authed || guest ? <LobbyScreen /> : <Navigate to="/login" replace />
+          authed || guest ? (
+            <Lobby
+              onStart={(players) => {
+                const names = players.map((p) => p.name);
+                nav("/game", { state: { names } });
+              }}
+              onBack={() => nav("/")}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route
         path="/game"
         element={authed || guest ? <Game /> : <Navigate to="/login" replace />}
       />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/register" element={<RegisterScreen />} />
+      <Route
+        path="/login"
+        element={
+          <Login
+            onLogin={handleLogin}
+            goRegister={() => nav("/register")}
+            goGuest={handleGuest}
+          />
+        }
+      />
+      <Route
+        path="/register"
+        element={<Register goLogin={() => nav("/login")} onRegistered={() => nav("/login")} />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
