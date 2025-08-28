@@ -389,6 +389,7 @@ function reducer(state, action) {
       } else {
         // No Reboot: player explodes
         S.players[pid].alive = false;
+        S.turnsToTake = 0;
         S.discard.push(CARD.FATAL);
         S.fatalCard = null;
         S.phase = PHASE.AWAIT_ACTION;
@@ -584,7 +585,10 @@ export default function Game() {
           return;
         }
 
-        if (current.phase === PHASE.CHOOSING_PAIR_CARD && current.comboTarget != null) {
+        if (
+          current.phase === PHASE.CHOOSING_PAIR_CARD &&
+          current.comboTarget != null
+        ) {
           const index = choosePairIndex(current);
           dispatch({ type: "RESOLVE_PAIR_FROM", index });
           return;
@@ -592,12 +596,14 @@ export default function Game() {
 
         if (current.phase === PHASE.CHOOSING_TRIPLE_TARGET) {
           const toId = chooseTripleTarget(current);
-          if (toId != null)
-            dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId });
+          if (toId != null) dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId });
           return;
         }
 
-        if (current.phase === PHASE.CHOOSING_TRIPLE_CARD && current.comboTarget != null) {
+        if (
+          current.phase === PHASE.CHOOSING_TRIPLE_CARD &&
+          current.comboTarget != null
+        ) {
           const cardName = chooseTripleCard(current);
           dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName });
           return;
@@ -630,7 +636,7 @@ export default function Game() {
                 });
                 break;
               }
-              // fallthrough to DRAW if no card name
+            // fallthrough to DRAW if no card name
             case "PLAY_TRIPLE":
               if (decision.cardName) {
                 dispatch({
@@ -640,7 +646,7 @@ export default function Game() {
                 });
                 break;
               }
-              // fallthrough
+            // fallthrough
             case "DRAW":
             default:
               dispatch({ type: "DRAW" });
