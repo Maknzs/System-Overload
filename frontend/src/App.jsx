@@ -69,14 +69,28 @@ export default function App() {
 
   // small wrappers so we can pass callbacks that navigate
   const MenuScreen = () => (
-    <Menu user={user} onStart={() => nav("/lobby")} onLogout={handleLogout} />
+    <Menu
+      user={user}
+      onStart={() => nav("/lobby")}
+      onStartBot={() =>
+        nav("/game", {
+          state: {
+            players: [
+              { id: "1", name: user?.username || "Player 1", isBot: false },
+              { id: "2", name: "ML Bot", isBot: true },
+            ],
+          },
+        })
+      }
+      onLogout={handleLogout}
+    />
   );
 
   const LobbyScreen = () => (
     <Lobby
       onStart={(players) => {
-        const names = players.map((p) => p.name);
-        nav("/game", { state: { names } });
+        // Pass full player objects, including isBot flags
+        nav("/game", { state: { players } });
       }}
       onBack={() => nav("/")}
     />

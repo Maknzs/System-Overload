@@ -1,6 +1,6 @@
 import "./Menu.css";
 
-export default function Menu({ user, onStart, onLogout }) {
+export default function Menu({ user, onStart, onStartBot, onLogout }) {
   return (
     <div className="page menu-page">
       <div className="menu-header">
@@ -22,7 +22,10 @@ export default function Menu({ user, onStart, onLogout }) {
 
       <div className="actions">
         <button className="btn btn-accent" onClick={onStart}>
-          Start New Local Game
+          Start Hotseat Game
+        </button>
+        <button className="btn btn-accent" onClick={onStartBot}>
+          Play vs ML Bot
         </button>
         <button className="btn btn-ghost" onClick={onLogout}>
           Logout

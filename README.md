@@ -1,6 +1,7 @@
 # System Overload — Hotseat Card Game
 
 - **Frontend:** React (JavaScript) + Vite — hotseat game runs fully client-side with `useState`/`useReducer`.
+- **ML Bot:** Optional machine learning opponent for single-player matches.
 - **Backend:** Express (JavaScript) — auth & profile only (register, login, me, email change, account delete, games played increment).
 - **DB:** MongoDB Atlas (users + `gamesPlayed` only).
 - **Auth:** JWT Bearer tokens (no cookies). Client stores token in memory or sessionStorage.

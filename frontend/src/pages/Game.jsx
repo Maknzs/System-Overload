@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   createDeck,
@@ -16,6 +16,14 @@ import DiscardPile from "../components/DiscardPile";
 import Button from "../components/Button";
 import Modal from "../components/Modal";
 import { api } from "../api";
+import {
+  chooseAction,
+  chooseFavorTarget,
+  choosePairTarget,
+  choosePairIndex,
+  chooseTripleTarget,
+  chooseTripleCard,
+} from "../bot/mlBot";
 import "./Game.css"; // page styles (section boxes, layout, log, etc.)
 
 const PHASE = {
@@ -58,10 +66,15 @@ const HAND_DISPLAY_ORDER = [
 
 const STACK_SPACING = 20; // px gap between stacked duplicate cards
 
-function initialState(names) {
-  const { deck, hands } = createDeck(names.length);
+function initialState(playerDefs) {
+  const { deck, hands } = createDeck(playerDefs.length);
   return {
-    players: names.map((n, i) => ({ id: i, name: n, alive: true })),
+    players: playerDefs.map((p, i) => ({
+      id: i,
+      name: typeof p === "string" ? p : p.name,
+      alive: true,
+      isBot: typeof p === "string" ? false : Boolean(p.isBot),
+    })),
     turn: 0,
     turnsToTake: 1, // active player's remaining turns (DDoS stack)
     deck,
@@ -147,14 +160,18 @@ function reducer(state, action) {
   };
 
   switch (action.type) {
-    case "INIT":
-      return initialState(action.names);
+    case "INIT": {
+      const defs = action.players || action.names || [];
+      return initialState(defs);
+    }
 
     case "CLEAR_PEEK":
       S.peek = [];
       return S;
 
     case "DRAW": {
+      // Guard: only allow draws during normal action phase and when no Fatal is pending reinsertion
+      if (state.phase !== PHASE.AWAIT_ACTION || state.fatalCard) return state;
       if (!S.deck.length) {
         S.log.push("Deck empty. Shuffling discard into deck.");
         S.deck = shuffle(S.discard);
@@ -412,15 +429,29 @@ function reducer(state, action) {
 export default function Game() {
   const nav = useNavigate();
   const { state } = useLocation();
-  const names = (state?.names || ["Player 1", "Player 2"])
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // Support both legacy {names, bot} and new {players}
+  const playersInput = (() => {
+    if (Array.isArray(state?.players) && state.players.length)
+      return state.players;
+    const names = (state?.names || ["Player 1", "Player 2"]) // legacy support
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const lastIsBot = Boolean(state?.bot);
+    return names.map((n, i) => ({
+      name: n,
+      isBot: lastIsBot && i === names.length - 1,
+    }));
+  })();
 
-  const [game, dispatch] = useReducer(reducer, initialState(names));
+  const [game, dispatch] = useReducer(reducer, initialState(playersInput));
   const [hideHand, setHideHand] = useState(true);
   const [selectedCard, setSelectedCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
   const [flipFatal, setFlipFatal] = useState(false);
+  const [showBotModal, setShowBotModal] = useState(false);
+  const botTurnStartLogIndexRef = useRef(0);
+  const botIntervalRef = useRef(null);
+  const pendingReinsertRef = useRef(null); // { pos }
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
@@ -444,16 +475,25 @@ export default function Game() {
     }
   }
 
-  // Init once
+  // Init once (support refresh during mount)
   useEffect(() => {
-    dispatch({ type: "INIT", names });
+    dispatch({ type: "INIT", players: playersInput });
     setHideHand(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Show pass-device modal whenever turn changes
+  // Show pass-device modal only when the active turn actually changes (not for other state updates)
   useEffect(() => {
-    setHideHand(true);
+    const isBot = game.players[game.turn]?.isBot;
+    setHideHand(!isBot);
+    // Track bot modal and starting log index for the current bot turn
+    if (isBot) {
+      setShowBotModal(true);
+      botTurnStartLogIndexRef.current = game.log.length;
+    } else {
+      setShowBotModal(false);
+      botTurnStartLogIndexRef.current = game.log.length;
+    }
   }, [game.turn]);
 
   // Show Health Check modal with top 3 cards
@@ -469,13 +509,163 @@ export default function Game() {
     setShowPeekModal(false);
   }, [game.peek]);
 
-  // Auto-close draw modal after 5 seconds
+  // Clear pending bot reinsertion if it is no longer the bot's turn
   useEffect(() => {
-    if (game.drawnCard) {
+    const isBot = game.players[game.turn]?.isBot;
+    if (!isBot) pendingReinsertRef.current = null;
+  }, [game.turn, game.players]);
+
+  // Auto-close draw modal after 5 seconds (human players)
+  useEffect(() => {
+    const isBot = game.players[game.turn]?.isBot;
+    if (game.drawnCard && !isBot) {
       const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 5000);
       return () => clearTimeout(timer);
     }
-  }, [game.drawnCard]);
+  }, [game.drawnCard, game.turn, game.players]);
+
+  // Bot logic (throttled to ~1 action/2.5s)
+  useEffect(() => {
+    const isBot = game.players[game.turn]?.isBot;
+
+    // Clear any previous interval when turn changes or when not a bot
+    if (!isBot) {
+      if (botIntervalRef.current) {
+        clearInterval(botIntervalRef.current);
+        botIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start a ticking interval that performs at most one action per tick
+    if (!botIntervalRef.current) {
+      botIntervalRef.current = setInterval(() => {
+        // Capture live game state via closure from latest render
+        // 1) If we owe a REBOOT reinsertion, do that first.
+        if (pendingReinsertRef.current) {
+          const { pos } = pendingReinsertRef.current;
+          pendingReinsertRef.current = null;
+          dispatch({ type: "REBOOT_INSERT", pos });
+          return; // one action this tick
+        }
+
+        const current = game; // latest props in closure due to dependency below
+        const pid = current.turn;
+        const handNow = current.hands[pid] || [];
+
+        if (current.drawnCard) {
+          // Finish draw animations/modals
+          dispatch({ type: "END_DRAW" });
+          return;
+        }
+
+        if (current.phase === PHASE.RESOLVE_FATAL) {
+          if (handNow.includes(CARD.REBOOT)) {
+            // Step 1: use Reboot (removes it), Step 2 next tick: reinsert Fatal
+            dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
+            const pos = Math.floor(Math.random() * (current.deck.length + 1));
+            pendingReinsertRef.current = { pos };
+          } else {
+            // No reboot, explode
+            dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
+          }
+          return;
+        }
+
+        if (current.phase === PHASE.CHOOSING_FAVOR) {
+          const toId = chooseFavorTarget(current);
+          if (toId != null) dispatch({ type: "RESOLVE_FAVOR_FROM", toId });
+          return;
+        }
+
+        if (current.phase === PHASE.CHOOSING_PAIR_TARGET) {
+          const toId = choosePairTarget(current);
+          if (toId != null) dispatch({ type: "RESOLVE_PAIR_TARGET", toId });
+          return;
+        }
+
+        if (current.phase === PHASE.CHOOSING_PAIR_CARD && current.comboTarget != null) {
+          const index = choosePairIndex(current);
+          dispatch({ type: "RESOLVE_PAIR_FROM", index });
+          return;
+        }
+
+        if (current.phase === PHASE.CHOOSING_TRIPLE_TARGET) {
+          const toId = chooseTripleTarget(current);
+          if (toId != null)
+            dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId });
+          return;
+        }
+
+        if (current.phase === PHASE.CHOOSING_TRIPLE_CARD && current.comboTarget != null) {
+          const cardName = chooseTripleCard(current);
+          dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName });
+          return;
+        }
+
+        if (current.phase === PHASE.AWAIT_ACTION) {
+          const decision = chooseAction(current);
+          switch (decision?.type) {
+            case "PLAY_SKIP":
+              dispatch({ type: "PLAY_SKIP" });
+              break;
+            case "PLAY_ATTACK":
+              dispatch({ type: "PLAY_ATTACK" });
+              break;
+            case "PLAY_SHUFFLE":
+              dispatch({ type: "PLAY_SHUFFLE" });
+              break;
+            case "PLAY_FUTURE":
+              dispatch({ type: "PLAY_FUTURE" });
+              break;
+            case "PLAY_FAVOR":
+              dispatch({ type: "PLAY_FAVOR" });
+              break;
+            case "PLAY_PAIR":
+              if (decision.cardName) {
+                dispatch({
+                  type: "START_COMBO",
+                  cardName: decision.cardName,
+                  mode: "PAIR",
+                });
+                break;
+              }
+              // fallthrough to DRAW if no card name
+            case "PLAY_TRIPLE":
+              if (decision.cardName) {
+                dispatch({
+                  type: "START_COMBO",
+                  cardName: decision.cardName,
+                  mode: "TRIPLE",
+                });
+                break;
+              }
+              // fallthrough
+            case "DRAW":
+            default:
+              dispatch({ type: "DRAW" });
+          }
+          return;
+        }
+      }, 2500);
+    }
+
+    // Cleanup when dependencies change (keep pendingReinsert across ticks)
+    return () => {
+      if (botIntervalRef.current) {
+        clearInterval(botIntervalRef.current);
+        botIntervalRef.current = null;
+      }
+    };
+  }, [
+    game.turn,
+    game.players,
+    game.phase,
+    game.drawnCard,
+    game.deck.length,
+    game.hands,
+    dispatch,
+  ]);
 
   // Winner flow
   useEffect(() => {
@@ -525,9 +715,15 @@ export default function Game() {
       ? canPlayNow
       : game.phase === PHASE.RESOLVE_FATAL);
   const canPair =
-    COMBO_CARDS.includes(selectedCard) && selectedCount >= 2 && canPlayNow;
+    selectedCard !== CARD.FATAL &&
+    selectedCard !== CARD.REBOOT &&
+    selectedCount >= 2 &&
+    canPlayNow;
   const canTriple =
-    COMBO_CARDS.includes(selectedCard) && selectedCount >= 3 && canPlayNow;
+    selectedCard !== CARD.FATAL &&
+    selectedCard !== CARD.REBOOT &&
+    selectedCount >= 3 &&
+    canPlayNow;
 
   function playCardByName(cardName) {
     if (!me?.alive) return;
@@ -607,9 +803,15 @@ export default function Game() {
         <div className="card deck-area__left">
           <DeckCard
             count={game.deck.length}
-            onClick={() => dispatch({ type: "DRAW" })}
+            onClick={() => {
+              if (!me?.isBot && !game.fatalCard) dispatch({ type: "DRAW" });
+            }}
             disabled={
-              hideHand || game.phase !== PHASE.AWAIT_ACTION || !!game.drawnCard
+              hideHand ||
+              me?.isBot ||
+              game.phase !== PHASE.AWAIT_ACTION ||
+              !!game.fatalCard ||
+              !!game.drawnCard
             }
           />
           <div>
@@ -630,11 +832,11 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Drawn card modal */}
-      <Modal show={!!game.drawnCard}>
+      {/* Drawn card modal (hidden during bot turns) */}
+      <Modal show={!!game.drawnCard && !game.players[game.turn]?.isBot}>
         {game.drawnCard && (
           <>
-            <div className="modal-title">{game.drawnCard}</div>
+            <div className="modal-title">You Got A {game.drawnCard}</div>
             <div
               className="hstack"
               style={{ justifyContent: "center", margin: "10px 0" }}
@@ -850,6 +1052,50 @@ export default function Game() {
         </div>
       </Modal>
 
+      {/* Bot Playing modal */}
+      <Modal show={showBotModal}>
+        {(() => {
+          const bot = game.players[game.turn];
+          const start = botTurnStartLogIndexRef.current;
+          // Filter current turn log entries that belong to this bot
+          const turnEntries = game.log.slice(start);
+          const entries = turnEntries.filter((entry) => {
+            const text = typeof entry === "string" ? entry : entry.text || "";
+            return bot && text.includes(bot.name);
+          });
+          return (
+            <>
+              <div className="section-title">Bot Playing</div>
+              <div style={{ marginBottom: 8 }}>
+                {bot ? `${bot.name} is taking actions...` : "Bot turn"}
+              </div>
+              <ul className="list scroll">
+                {entries.length === 0 ? (
+                  <li>Thinking...</li>
+                ) : (
+                  entries.map((e, i) => (
+                    <li key={i}>
+                      {typeof e === "string" ? (
+                        e
+                      ) : (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: (e.text || "").replace(
+                              /\*\*(.*?)\*\*/g,
+                              "<b>$1</b>"
+                            ),
+                          }}
+                        />
+                      )}
+                    </li>
+                  ))
+                )}
+              </ul>
+            </>
+          );
+        })()}
+      </Modal>
+
       {/* Card action modal */}
       <Modal show={selectedCard !== null}>
         {selectedCard && (
@@ -895,35 +1141,33 @@ export default function Game() {
                   Play
                 </Button>
               )}
-              {COMBO_CARDS.includes(selectedCard) && (
-                <>
-                  <Button
-                    onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "PAIR",
-                      });
-                      setSelectedCard(null);
-                    }}
-                    disabled={!canPair}
-                  >
-                    Pair
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "TRIPLE",
-                      });
-                      setSelectedCard(null);
-                    }}
-                    disabled={!canTriple}
-                  >
-                    Triple
-                  </Button>
-                </>
+              {canPair && (
+                <Button
+                  onClick={() => {
+                    dispatch({
+                      type: "START_COMBO",
+                      cardName: selectedCard,
+                      mode: "PAIR",
+                    });
+                    setSelectedCard(null);
+                  }}
+                >
+                  Pair
+                </Button>
+              )}
+              {canTriple && (
+                <Button
+                  onClick={() => {
+                    dispatch({
+                      type: "START_COMBO",
+                      cardName: selectedCard,
+                      mode: "TRIPLE",
+                    });
+                    setSelectedCard(null);
+                  }}
+                >
+                  Triple
+                </Button>
               )}
               <Button onClick={() => setSelectedCard(null)}>Cancel</Button>
             </div>

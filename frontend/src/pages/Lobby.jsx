@@ -2,25 +2,46 @@ import React, { useState } from "react";
 import Button from "../components/Button";
 import "./Lobby.css";
 
+// Allows up to 5 total participants. Each row can be Human or AI Bot.
 export default function Lobby({ onStart, onBack }) {
-  const [names, setNames] = useState(["", ""]);
+  const [players, setPlayers] = useState([
+    { name: "", isBot: false },
+    { name: "", isBot: false },
+  ]);
 
-  const addPlayer = () => names.length < 5 && setNames([...names, ""]);
+  const addPlayer = (isBot = false) =>
+    players.length < 5 && setPlayers([...players, { name: "", isBot }]);
+
   const removePlayer = (i) =>
-    names.length > 2 && setNames(names.filter((_, idx) => idx !== i));
-  const update = (i, v) => {
-    const next = names.slice();
-    next[i] = v;
-    setNames(next);
+    players.length > 2 && setPlayers(players.filter((_, idx) => idx !== i));
+
+  const updateName = (i, name) => {
+    const next = players.slice();
+    next[i] = { ...next[i], name };
+    setPlayers(next);
+  };
+
+  const toggleBot = (i) => {
+    const next = players.slice();
+    next[i] = { ...next[i], isBot: !next[i].isBot };
+    setPlayers(next);
   };
 
   const start = () => {
-    const players = names
-      .map((n) => n.trim())
-      .filter(Boolean)
-      .map((n, i) => ({ id: String(i + 1), name: n }));
-    if (players.length >= 2) onStart(players);
+    // Assign defaults for any empty names before filtering
+    const finalized = players.map((p, i) => ({
+      ...p,
+      name: (p.name || (p.isBot ? `Bot ${i + 1}` : `Player ${i + 1}`)).trim(),
+    }));
+
+    const valid = finalized.filter((p) => Boolean(p.name));
+    if (valid.length < 2) return; // need at least 2 participants
+
+    // Map to shape expected by Game route
+    onStart(valid.map((p, i) => ({ id: String(i + 1), name: p.name, isBot: p.isBot })));
   };
+
+  const filledCount = players.filter((p) => (p.name || "").trim()).length;
 
   return (
     <div className="page">
@@ -29,19 +50,24 @@ export default function Lobby({ onStart, onBack }) {
       <div className="card">
         <div className="section-title">Players</div>
         <div className="lobby-grid">
-          {names.map((n, i) => (
+          {players.map((p, i) => (
             <div className="player-row" key={i}>
               <input
                 className="input"
-                value={n}
-                placeholder={`Player ${i + 1} name`}
-                onChange={(e) => update(i, e.target.value)}
+                value={p.name}
+                placeholder={`${p.isBot ? "Bot" : "Player"} ${i + 1} name`}
+                onChange={(e) => updateName(i, e.target.value)}
               />
+              <label className="hstack" style={{ gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={p.isBot}
+                  onChange={() => toggleBot(i)}
+                />
+                AI Bot
+              </label>
               {i >= 2 && (
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => removePlayer(i)}
-                >
+                <button className="btn btn-ghost" onClick={() => removePlayer(i)}>
                   Remove
                 </button>
               )}
@@ -51,15 +77,21 @@ export default function Lobby({ onStart, onBack }) {
         <div className="lobby-actions">
           <button
             className="btn btn-ghost"
-            onClick={addPlayer}
-            disabled={names.length >= 5}
+            onClick={() => addPlayer(false)}
+            disabled={players.length >= 5}
           >
             Add Player
           </button>
           <button
+            className="btn btn-ghost"
+            onClick={() => addPlayer(true)}
+            disabled={players.length >= 5}
+          >
+            Add Bot
+          </button>
+          <button
             className="btn btn-accent"
             onClick={start}
-            disabled={names.filter((x) => x.trim()).length < 2}
           >
             Start Game
           </button>
