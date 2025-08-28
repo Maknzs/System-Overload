@@ -72,6 +72,7 @@ function initialState(names) {
     phase: PHASE.AWAIT_ACTION,
     combo: null,
     drawnCard: null,
+    advanceAfterDraw: false,
 
     // Attack handoff
     pendingExtraTurnsFor: null, // who will receive extra turns next
@@ -173,12 +174,15 @@ function reducer(state, action) {
       S.hands[pid].push(card);
       S.log.push(`${S.players[pid].name} drew a card.`);
       S.drawnCard = card;
+      S.advanceAfterDraw = true;
       return S;
     }
 
     case "END_DRAW": {
       S.drawnCard = null;
-      return advanceTurn(S);
+      const shouldAdvance = S.advanceAfterDraw;
+      S.advanceAfterDraw = false;
+      return shouldAdvance ? advanceTurn(S) : S;
     }
 
     case "PLAY_SKIP": {
@@ -255,6 +259,8 @@ function reducer(state, action) {
         const idx = Math.floor(Math.random() * opp.length);
         const given = opp.splice(idx, 1)[0];
         S.hands[fromId].push(given);
+        S.drawnCard = given;
+        S.advanceAfterDraw = false;
 
         // visible to everyone EXCEPT the two involved
         S.log.push({
@@ -315,6 +321,8 @@ function reducer(state, action) {
         S.log.push(
           `${S.players[pid].name} stole a card from ${S.players[toId].name}.`
         );
+        S.drawnCard = given;
+        S.advanceAfterDraw = false;
       }
 
       S.comboTarget = null;
@@ -338,6 +346,8 @@ function reducer(state, action) {
       if (idx !== -1) {
         opp.splice(idx, 1);
         S.hands[pid].push(cardName);
+        S.drawnCard = cardName;
+        S.advanceAfterDraw = false;
         S.log.push(
           `${S.players[pid].name} received ${cardName} from ${S.players[toId].name}.`
         );
@@ -862,6 +872,17 @@ export default function Game() {
             <div className="subtle" style={{ marginBottom: 12 }}>
               {CARD_DESC[selectedCard]}
             </div>
+            {COMBO_CARDS.includes(selectedCard) && selectedCount < 2 && (
+              <div className="subtle" style={{ marginBottom: 12 }}>
+                This card must be paired to have available actions.
+              </div>
+            )}
+            {selectedCard === CARD.REBOOT && (
+              <div className="subtle" style={{ marginBottom: 12 }}>
+                This card is only used to deactivate a Fatal Server Error when
+                drawn. It cannot be played during your turn.
+              </div>
+            )}
             <div className="hstack" style={{ justifyContent: "center" }}>
               {isActionCard && (
                 <Button
@@ -921,16 +942,19 @@ export default function Game() {
           style={{ flexWrap: "wrap", columnGap: 0, rowGap: 8 }}
         >
           {groupedHand.map(({ card: c, count }, i) => {
+            const canInspect =
+              game.phase === PHASE.AWAIT_ACTION && !hideHand && !game.drawnCard;
             const isPlayable =
-              game.phase === PHASE.AWAIT_ACTION &&
-              !hideHand &&
-              !game.drawnCard &&
+              canInspect &&
               (c === CARD.SKIP ||
                 c === CARD.ATTACK ||
                 c === CARD.SHUFFLE ||
                 c === CARD.FUTURE ||
                 c === CARD.FAVOR ||
                 (COMBO_CARDS.includes(c) && count >= 2));
+            const needsPair =
+              canInspect && COMBO_CARDS.includes(c) && count < 2;
+            const showInfo = needsPair || (canInspect && c === CARD.REBOOT);
 
             if (count === 1) {
               return (
@@ -941,6 +965,9 @@ export default function Game() {
                   faceDown={hideHand}
                   onClick={() => setSelectedCard(c)}
                   disabled={!isPlayable}
+                  onDisabledClick={
+                    showInfo ? () => setSelectedCard(c) : undefined
+                  }
                 />
               );
             }
@@ -962,6 +989,9 @@ export default function Game() {
                     faceDown={hideHand}
                     onClick={() => setSelectedCard(c)}
                     disabled={!isPlayable}
+                    onDisabledClick={
+                      showInfo ? () => setSelectedCard(c) : undefined
+                    }
                     style={{ "--stack-index": j }}
                   />
                 ))}

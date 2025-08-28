@@ -10,6 +10,7 @@ export default function Card({
   disabled = false,
   faceDown = false,
   allowClickWhenFaceDown = false,
+  onDisabledClick,
   src,
   title,
   style,
@@ -19,12 +20,13 @@ export default function Card({
     : src || CARD_IMG[name] || STOCK_CARD_IMG;
 
   const isDisabled = disabled || (faceDown && !allowClickWhenFaceDown);
+  const handleClick = isDisabled ? onDisabledClick : onClick;
 
   return (
     <button
       type="button"
       className={`ui-card card--${size}${isDisabled ? " is-disabled" : ""}`}
-      onClick={isDisabled ? undefined : onClick}
+      onClick={handleClick}
       // hide the real card name when face-down
       title={faceDown ? "Hidden card" : title || name}
       aria-label={faceDown ? "Hidden card" : title || name}
