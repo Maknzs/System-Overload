@@ -370,8 +370,9 @@ function reducer(state, action) {
         S.phase = PHASE.AWAIT_ACTION;
         return S;
       } else {
-        // No Reboot: player explodes
+        // No Reboot: player eliminated
         S.players[pid].alive = false;
+        S.turnsToTake = 0;
         S.discard.push(CARD.FATAL);
         S.fatalCard = null;
         S.phase = PHASE.AWAIT_ACTION;
