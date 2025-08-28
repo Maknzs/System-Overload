@@ -1,0 +1,101 @@
+.cardwrap {
+  width: 110px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: var(--shadow);
+  position: relative;
+  display: grid;
+  place-items: center;
+  transition: transform 0.12s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+.cardwrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cardwrap .label {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(
+    135deg,
+    rgba(108, 204, 255, 0.8),
+    rgba(159, 108, 255, 0.8)
+  );
+  color: #05112b;
+  padding: 0.28rem 0.45rem;
+  border-radius: 8px;
+  text-align: center;
+}
+.cardwrap.is-disabled {
+  filter: grayscale(0.1) opacity(0.9);
+}
+.cardwrap:not(.is-disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+.card--clickable {
+  cursor: pointer;
+  transform: translateY(0);
+}
+.card--clickable:hover {
+  transform: translateY(-3px) rotate(-0.5deg);
+}
+.card--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* components/Card.css */
+:root {
+  --card-hand-w: 140px;
+  --card-hand-h: 200px;
+  --card-discard-w: 140px;
+  --card-discard-h: 200px;
+  --card-deck-w: 170px;
+  --card-deck-h: 230px;
+  --card-radius: 14px;
+  --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.ui-card {
+  display: inline-flex;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ui-card.is-disabled {
+  cursor: default;
+  opacity: 0.9;
+}
+.ui-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  pointer-events: none;
+}
+.card--hand {
+  width: var(--card-hand-w);
+  height: var(--card-hand-h);
+}
+.card--discard {
+  width: var(--card-discard-w);
+  height: var(--card-discard-h);
+}
+.card--deck {
+  width: var(--card-deck-w);
+  height: var(--card-deck-h);
+}
+.ui-card:not(.is-disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}

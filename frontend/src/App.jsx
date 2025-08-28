@@ -1,27 +1,121 @@
-import React, { useState } from 'react'
-import Login from './pages/Login.jsx'
-import Register from './pages/Register.jsx'
-import Menu from './pages/Menu.jsx'
-import Lobby from './pages/Lobby.jsx'
-import Game from './pages/Game.jsx'
+// frontend/src/App.jsx
+import { useEffect, useState, useCallback } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import Menu from "./pages/Menu.jsx";
+import Lobby from "./pages/Lobby.jsx";
+import Game from "./pages/Game.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import { api } from "./api"; // assumes you already have this helper
 
-export default function App(){
-  const [route, setRoute] = useState('login') // 'login' | 'register' | 'menu' | 'lobby' | 'game'
-  const [token, setToken] = useState(null)
-  const [user, setUser] = useState(null)
-  const [players, setPlayers] = useState([])
+export default function App() {
+  const nav = useNavigate();
+  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [user, setUser] = useState(null);
+  const [guest, setGuest] = useState(false);
+  const authed = Boolean(token);
 
-  function handleLogout(){
-    setToken(null); setUser(null); setRoute('login')
-  }
+  // keep api helper aware of token, if your helper needs it
+  useEffect(() => {
+    if (token) localStorage.setItem("token", token);
+    else localStorage.removeItem("token");
+  }, [token]);
+
+  // try to fetch the current user with the token
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      try {
+        const me = await api("/auth/me"); // your backend should return the user
+        if (!ignore) setUser(me);
+      } catch {
+        if (!ignore) {
+          setToken("");
+          setUser(null);
+        }
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [token]);
+
+  const handleLogin = useCallback(
+    (t, u) => {
+      setToken(t);
+      setUser(u);
+      setGuest(false);
+      nav("/"); // go to menu
+    },
+    [nav]
+  );
+
+  const handleGuest = useCallback(() => {
+    setGuest(true);
+    setToken("");
+    setUser(null);
+    nav("/lobby");
+  }, [nav]);
+
+  const handleLogout = useCallback(() => {
+    setToken("");
+    setUser(null);
+    nav("/login");
+  }, [nav]);
+
+  // small wrappers so we can pass callbacks that navigate
+  const MenuScreen = () => (
+    <Menu user={user} onStart={() => nav("/lobby")} onLogout={handleLogout} />
+  );
+
+  const LobbyScreen = () => (
+    <Lobby
+      onStart={(players) => {
+        const names = players.map((p) => p.name);
+        nav("/game", { state: { names } });
+      }}
+      onBack={() => nav("/")}
+    />
+  );
+
+  const LoginScreen = () => (
+    <Login
+      onLogin={handleLogin}
+      goRegister={() => nav("/register")}
+      goGuest={handleGuest}
+    />
+  );
+
+  const RegisterScreen = () => (
+    <Register
+      goLogin={() => nav("/login")}
+      onRegistered={() => nav("/login")}
+    />
+  );
 
   return (
-    <div style={{ fontFamily:'system-ui, sans-serif', maxWidth: 960, margin:'0 auto', padding:16 }}>
-      {route === 'login' && <Login onLogin={(t,u)=>{ setToken(t); setUser(u); setRoute('menu') }} goRegister={()=>setRoute('register')} />}
-      {route === 'register' && <Register goLogin={()=>setRoute('login')} />}
-      {route === 'menu' && <Menu user={user} onStart={()=>setRoute('lobby')} onLogout={handleLogout} />}
-      {route === 'lobby' && <Lobby onStart={(p)=>{ setPlayers(p); setRoute('game') }} onBack={()=>setRoute('menu')} />}
-      {route === 'game' && <Game players={players} onExit={()=>setRoute('menu')} token={token} />}
-    </div>
-  )
+    <Routes>
+      <Route
+        path="/"
+        element={authed ? <MenuScreen /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/lobby"
+        element={
+          authed || guest ? <LobbyScreen /> : <Navigate to="/login" replace />
+        }
+      />
+      <Route
+        path="/game"
+        element={authed || guest ? <Game /> : <Navigate to="/login" replace />}
+      />
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/register" element={<RegisterScreen />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
