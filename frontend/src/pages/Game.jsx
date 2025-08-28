@@ -7,6 +7,7 @@ import {
   CARD_IMG,
   STOCK_CARD_IMG,
   COMBO_CARDS,
+  CARD_DESC,
 } from "../game/cards";
 import PrivacyScreen from "../components/PrivacyScreen";
 import Card from "../components/Card";
@@ -70,6 +71,7 @@ function initialState(names) {
     log: [],
     phase: PHASE.AWAIT_ACTION,
     combo: null,
+    drawnCard: null,
 
     // Attack handoff
     pendingExtraTurnsFor: null, // who will receive extra turns next
@@ -167,9 +169,15 @@ function reducer(state, action) {
         return S;
       }
 
-      // Safe draw -> add to hand, then auto-advance
+      // Safe draw -> add to hand, show modal, advance after close
       S.hands[pid].push(card);
       S.log.push(`${S.players[pid].name} drew a card.`);
+      S.drawnCard = card;
+      return S;
+    }
+
+    case "END_DRAW": {
+      S.drawnCard = null;
       return advanceTurn(S);
     }
 
@@ -400,7 +408,7 @@ export default function Game() {
 
   const [game, dispatch] = useReducer(reducer, initialState(names));
   const [hideHand, setHideHand] = useState(true);
-  const [pendingComboCard, setPendingComboCard] = useState(null);
+  const [selectedCard, setSelectedCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
   const [flipFatal, setFlipFatal] = useState(false);
 
@@ -426,14 +434,6 @@ export default function Game() {
     }
   }
 
-  const comboCounts = hand.reduce((a, c) => {
-    a[c] = (a[c] || 0) + 1;
-    return a;
-  }, {});
-  const comboOptions = Object.entries(comboCounts).filter(
-    ([, count]) => count >= 2
-  );
-
   // Init once
   useEffect(() => {
     dispatch({ type: "INIT", names });
@@ -453,11 +453,19 @@ export default function Game() {
       const timer = setTimeout(() => {
         setShowPeekModal(false);
         dispatch({ type: "CLEAR_PEEK" });
-      }, 10000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
     setShowPeekModal(false);
   }, [game.peek]);
+
+  // Auto-close draw modal after 5 seconds
+  useEffect(() => {
+    if (game.drawnCard) {
+      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [game.drawnCard]);
 
   // Winner flow
   useEffect(() => {
@@ -487,7 +495,29 @@ export default function Game() {
       : CARD_IMG[CARD.FATAL];
 
   const countAlive = game.players.filter((p) => p.alive).length;
-  const canPlayNow = game.phase === PHASE.AWAIT_ACTION && !hideHand;
+  const canPlayNow =
+    game.phase === PHASE.AWAIT_ACTION && !hideHand && !game.drawnCard;
+
+  const selectedCount = selectedCard
+    ? hand.filter((h) => h === selectedCard).length
+    : 0;
+  const isActionCard = [
+    CARD.SKIP,
+    CARD.ATTACK,
+    CARD.SHUFFLE,
+    CARD.FUTURE,
+    CARD.FAVOR,
+    CARD.REBOOT,
+  ].includes(selectedCard);
+  const canPlaySelected =
+    isActionCard &&
+    (selectedCard !== CARD.REBOOT
+      ? canPlayNow
+      : game.phase === PHASE.RESOLVE_FATAL);
+  const canPair =
+    COMBO_CARDS.includes(selectedCard) && selectedCount >= 2 && canPlayNow;
+  const canTriple =
+    COMBO_CARDS.includes(selectedCard) && selectedCount >= 3 && canPlayNow;
 
   function playCardByName(cardName) {
     if (!me?.alive) return;
@@ -522,26 +552,8 @@ export default function Game() {
         break;
       // REBOOT is not playable during normal flow (only after a Fatal draw)
       default:
-        // do nothing for non-action or unsupported card
-        if (COMBO_CARDS.includes(cardName)) {
-          const count = game.hands[game.turn].filter(
-            (h) => h === cardName
-          ).length;
-          triggerCombo(cardName, count);
-        }
+        // Non-action cards are handled elsewhere
         break;
-    }
-  }
-
-  function triggerCombo(cardName, count) {
-    if (!canPlayNow) return;
-
-    if (count >= 3) {
-      // let the user choose pair vs triple in the pending combo modal
-      setPendingComboCard(cardName);
-    } else if (count === 2) {
-      // immediate pair
-      dispatch({ type: "START_COMBO", cardName, mode: "PAIR" });
     }
   }
 
@@ -586,7 +598,9 @@ export default function Game() {
           <DeckCard
             count={game.deck.length}
             onClick={() => dispatch({ type: "DRAW" })}
-            disabled={hideHand || game.phase !== PHASE.AWAIT_ACTION}
+            disabled={
+              hideHand || game.phase !== PHASE.AWAIT_ACTION || !!game.drawnCard
+            }
           />
           <div>
             <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
@@ -605,6 +619,35 @@ export default function Game() {
           </div>
         </div>
       </div>
+
+      {/* Drawn card modal */}
+      <Modal show={!!game.drawnCard}>
+        {game.drawnCard && (
+          <>
+            <div className="modal-title">{game.drawnCard}</div>
+            <div
+              className="hstack"
+              style={{ justifyContent: "center", margin: "10px 0" }}
+            >
+              <Card
+                name={game.drawnCard}
+                size="deck"
+                disabled
+                style={{
+                  width: "calc(var(--card-deck-w) * 2)",
+                  height: "calc(var(--card-deck-h) * 2)",
+                }}
+              />
+            </div>
+            <div className="subtle" style={{ marginBottom: 12 }}>
+              {CARD_DESC[game.drawnCard]}
+            </div>
+            <Button onClick={() => dispatch({ type: "END_DRAW" })}>
+              Close
+            </Button>
+          </>
+        )}
+      </Modal>
 
       {/* Health Check modal */}
       <Modal show={showPeekModal}>
@@ -698,40 +741,6 @@ export default function Game() {
                 {p.name}
               </Button>
             ))}
-        </div>
-      </Modal>
-
-      {/* Choose pair or triple */}
-      <Modal show={pendingComboCard !== null}>
-        <div className="section-title">
-          Use {pendingComboCard} as a pair or triple?
-        </div>
-        <div className="hstack">
-          <Button
-            onClick={() => {
-              dispatch({
-                type: "START_COMBO",
-                cardName: pendingComboCard,
-                mode: "PAIR",
-              });
-              setPendingComboCard(null);
-            }}
-          >
-            Pair
-          </Button>
-          <Button
-            onClick={() => {
-              dispatch({
-                type: "START_COMBO",
-                cardName: pendingComboCard,
-                mode: "TRIPLE",
-              });
-              setPendingComboCard(null);
-            }}
-          >
-            Triple
-          </Button>
-          <Button onClick={() => setPendingComboCard(null)}>Cancel</Button>
         </div>
       </Modal>
 
@@ -831,6 +840,76 @@ export default function Game() {
         </div>
       </Modal>
 
+      {/* Card action modal */}
+      <Modal show={selectedCard !== null}>
+        {selectedCard && (
+          <>
+            <div className="section-title">{selectedCard}</div>
+            <div
+              className="hstack"
+              style={{ justifyContent: "center", margin: "10px 0" }}
+            >
+              <Card
+                name={selectedCard}
+                size="deck"
+                disabled
+                style={{
+                  width: "calc(var(--card-deck-w) * 2)",
+                  height: "calc(var(--card-deck-h) * 2)",
+                }}
+              />
+            </div>
+            <div className="subtle" style={{ marginBottom: 12 }}>
+              {CARD_DESC[selectedCard]}
+            </div>
+            <div className="hstack" style={{ justifyContent: "center" }}>
+              {isActionCard && (
+                <Button
+                  onClick={() => {
+                    playCardByName(selectedCard);
+                    setSelectedCard(null);
+                  }}
+                  disabled={!canPlaySelected}
+                >
+                  Play
+                </Button>
+              )}
+              {COMBO_CARDS.includes(selectedCard) && (
+                <>
+                  <Button
+                    onClick={() => {
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "PAIR",
+                      });
+                      setSelectedCard(null);
+                    }}
+                    disabled={!canPair}
+                  >
+                    Pair
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "TRIPLE",
+                      });
+                      setSelectedCard(null);
+                    }}
+                    disabled={!canTriple}
+                  >
+                    Triple
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => setSelectedCard(null)}>Cancel</Button>
+            </div>
+          </>
+        )}
+      </Modal>
+
       {/* Hand */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
@@ -845,6 +924,7 @@ export default function Game() {
             const isPlayable =
               game.phase === PHASE.AWAIT_ACTION &&
               !hideHand &&
+              !game.drawnCard &&
               (c === CARD.SKIP ||
                 c === CARD.ATTACK ||
                 c === CARD.SHUFFLE ||
@@ -859,7 +939,7 @@ export default function Game() {
                   name={c}
                   size="hand"
                   faceDown={hideHand}
-                  onClick={isPlayable ? () => playCardByName(c) : undefined}
+                  onClick={() => setSelectedCard(c)}
                   disabled={!isPlayable}
                 />
               );
@@ -880,7 +960,7 @@ export default function Game() {
                     name={c}
                     size="hand"
                     faceDown={hideHand}
-                    onClick={isPlayable ? () => playCardByName(c) : undefined}
+                    onClick={() => setSelectedCard(c)}
                     disabled={!isPlayable}
                     style={{ "--stack-index": j }}
                   />

@@ -101,3 +101,26 @@ export const CARD_IMG = {
   [CARD.ROGUE_AV]: rogue,
   [CARD.COFFEE]: fuel,
 };
+
+// Descriptive text for each card's effect
+export const CARD_DESC = {
+  [CARD.FATAL]: "If drawn without a Reboot, you are knocked out of the game.",
+  [CARD.REBOOT]:
+    "Deactivate a Fatal Server Error when it is drawn and place it back in the deck.",
+  [CARD.SKIP]: "End your turn immediately without drawing a card.",
+  [CARD.ATTACK]:
+    "End your turn without drawing and force the next player to take two turns.",
+  [CARD.SHUFFLE]: "Shuffle the deck.",
+  [CARD.FUTURE]: "Look at the top three cards of the deck.",
+  [CARD.FAVOR]: "Request a random card from another player.",
+  [CARD.TAMPERED]:
+    "Play two to steal a random card. Play three to name and take a specific card.",
+  [CARD.NEW_ERROR]:
+    "Play two to steal a random card. Play three to name and take a specific card.",
+  [CARD.VALID_CREDS]:
+    "Play two to steal a random card. Play three to name and take a specific card.",
+  [CARD.ROGUE_AV]:
+    "Play two to steal a random card. Play three to name and take a specific card.",
+  [CARD.COFFEE]:
+    "Play two to steal a random card. Play three to name and take a specific card.",
+};
