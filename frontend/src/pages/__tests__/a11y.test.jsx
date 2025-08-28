@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { axe } from 'vitest-axe';
+import { axe } from 'jest-axe';
 import Login from '../Login.jsx';
 import Register from '../Register.jsx';
 import Menu from '../Menu.jsx';

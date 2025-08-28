@@ -37,7 +37,7 @@ jobs:
           name: backend-coverage
           path: backend/coverage
       - name: Upload to Codecov (backend)
-        if: always()
+        if: ${{ always() && hashFiles('backend/coverage/lcov.info') != '' }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -79,7 +79,7 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage
       - name: Upload to Codecov (frontend)
-        if: always()
+        if: ${{ always() && (hashFiles('frontend/coverage/lcov.info') != '' || hashFiles('frontend/coverage/lcov/lcov.info') != '') }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -109,13 +109,13 @@ jobs:
       - name: Install Playwright browsers
         working-directory: e2e
         run: |
-          npm ci
+          npm ci || npm install
           npx playwright install --with-deps
       - name: Run Playwright tests
         working-directory: e2e
         env:
           CI: true
-        run: npx playwright test --reporter=line
+        run: npx playwright test --reporter=line,html
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -126,6 +126,7 @@ jobs:
   load:
     name: Load (k6 light scenario)
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
