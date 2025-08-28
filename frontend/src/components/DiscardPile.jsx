@@ -3,11 +3,11 @@ import "./DiscardPile.css";
 import { CARD_IMG } from "../game/cards";
 
 /**
- * Newest card appears on the LEFT, older cards are pushed to the RIGHT.
+ * Newest card appears on the RIGHT, older cards are pushed to the LEFT.
  * Newest also has the highest z-index so it visually sits on top.
  */
 export default function DiscardPile({ cards = [], maxToShow = 10, onClick }) {
-  // Take last N, then reverse so index 0 = newest (leftmost)
+  // Take last N, then reverse so index 0 = newest (rightmost)
   const recentNewestFirst = cards.slice(-maxToShow).reverse();
 
   return (
@@ -31,7 +31,7 @@ export default function DiscardPile({ cards = [], maxToShow = 10, onClick }) {
               <div
                 key={`${name}-${i}`}
                 className="discard__card"
-                style={{ "--i": i }} // i=0 is newest (leftmost)
+                style={{ "--i": i }} // i=0 is newest (rightmost)
                 title={name}
               >
                 {src ? (

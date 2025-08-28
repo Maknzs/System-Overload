@@ -147,6 +147,10 @@ function reducer(state, action) {
     case "INIT":
       return initialState(action.names);
 
+    case "CLEAR_PEEK":
+      S.peek = [];
+      return S;
+
     case "DRAW": {
       if (!S.deck.length) {
         S.log.push("Deck empty. Shuffling discard into deck.");
@@ -446,7 +450,10 @@ export default function Game() {
   useEffect(() => {
     if (game.peek.length > 0) {
       setShowPeekModal(true);
-      const timer = setTimeout(() => setShowPeekModal(false), 10000);
+      const timer = setTimeout(() => {
+        setShowPeekModal(false);
+        dispatch({ type: "CLEAR_PEEK" });
+      }, 10000);
       return () => clearTimeout(timer);
     }
     setShowPeekModal(false);
@@ -547,7 +554,7 @@ export default function Game() {
 
   return (
     <div className="page">
-      <h1 className="page-header">System Overload — Local Game</h1>
+      <h1 className="page-header">System Overload</h1>
 
       {/* Meta pills */}
       <div className="meta">
@@ -558,7 +565,7 @@ export default function Game() {
           Turn:
           <b style={{ marginLeft: 6 }}>{me?.name}</b>
           <span className="subtle" style={{ marginLeft: 6 }}>
-            (need {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
+            (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
           </span>
         </span>
       </div>
@@ -572,6 +579,9 @@ export default function Game() {
 
       {/* Deck / Discard */}
       <div className="deck-area">
+        <div className="card deck-area__right">
+          <DiscardPile cards={game.discard} maxToShow={10} />
+        </div>
         <div className="card deck-area__left">
           <div>
             <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
@@ -589,13 +599,9 @@ export default function Game() {
           </div>
           <DeckCard
             count={game.deck.length}
-            onClick={() => dispatch({ type: "DRAW" })} // optional: make clickable
+            onClick={() => dispatch({ type: "DRAW" })}
             disabled={hideHand || game.phase !== PHASE.AWAIT_ACTION}
           />
-        </div>
-
-        <div className="card deck-area__right">
-          <DiscardPile cards={game.discard} maxToShow={10} />
         </div>
       </div>
 
@@ -611,7 +617,14 @@ export default function Game() {
           ))}
         </div>
         <div style={{ marginTop: 12 }}>
-          <Button onClick={() => setShowPeekModal(false)}>Close</Button>
+          <Button
+            onClick={() => {
+              setShowPeekModal(false);
+              dispatch({ type: "CLEAR_PEEK" });
+            }}
+          >
+            Close
+          </Button>
         </div>
       </Modal>
 

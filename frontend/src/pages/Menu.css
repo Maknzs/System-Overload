@@ -3,6 +3,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
+  align-items: center;
 }
 .badge {
   background: linear-gradient(90deg, var(--accent), #fb923c);

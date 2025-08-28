@@ -12,6 +12,7 @@ export default function App() {
   const nav = useNavigate();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
+  const [guest, setGuest] = useState(false);
   const authed = Boolean(token);
 
   // keep api helper aware of token, if your helper needs it
@@ -47,10 +48,18 @@ export default function App() {
     (t, u) => {
       setToken(t);
       setUser(u);
+      setGuest(false);
       nav("/"); // go to menu
     },
     [nav]
   );
+
+  const handleGuest = useCallback(() => {
+    setGuest(true);
+    setToken("");
+    setUser(null);
+    nav("/lobby");
+  }, [nav]);
 
   const handleLogout = useCallback(() => {
     setToken("");
@@ -74,7 +83,11 @@ export default function App() {
   );
 
   const LoginScreen = () => (
-    <Login onLogin={handleLogin} goRegister={() => nav("/register")} />
+    <Login
+      onLogin={handleLogin}
+      goRegister={() => nav("/register")}
+      goGuest={handleGuest}
+    />
   );
 
   const RegisterScreen = () => (
@@ -92,11 +105,13 @@ export default function App() {
       />
       <Route
         path="/lobby"
-        element={authed ? <LobbyScreen /> : <Navigate to="/login" replace />}
+        element={
+          authed || guest ? <LobbyScreen /> : <Navigate to="/login" replace />
+        }
       />
       <Route
         path="/game"
-        element={authed ? <Game /> : <Navigate to="/login" replace />}
+        element={authed || guest ? <Game /> : <Navigate to="/login" replace />}
       />
       <Route path="/login" element={<LoginScreen />} />
       <Route path="/register" element={<RegisterScreen />} />

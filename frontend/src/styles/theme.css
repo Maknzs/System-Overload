@@ -40,13 +40,15 @@ body {
 .page {
   max-width: 980px;
   margin: 0 auto;
-  padding: 28px 20px 40px;
+  padding: 0px 20px 40px;
 }
 .page-header {
   margin: 0 0 18px;
-  font-size: 2rem;
+  font-size: 4rem;
   font-weight: 800;
-  letter-spacing: 0.2px;
+  letter-spacing: 13px;
+  text-align: center;
+  color: red;
 }
 .subtle {
   color: #cfd6ff;
@@ -179,10 +181,25 @@ body {
 /* ≥ 768px: fixed deck column + fluid discard column */
 @media (min-width: 768px) {
   .deck-area {
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 1fr 280px;
   }
 }
-
+@media (max-width: 768px) {
+  .page-header {
+    margin: 0 0 15px;
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 1.6vw;
+  }
+}
+@media (max-width: 600px) {
+  .page-header {
+    margin: 0 0 15px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 1.4vw;
+  }
+}
 /* Make the left panel content vertical */
 .deck-area__left {
   display: flex;

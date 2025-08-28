@@ -4,7 +4,7 @@ import TextInput from "../components/TextInput";
 import { api } from "../api";
 import "./Login.css";
 
-export default function Login({ onLogin, goRegister }) {
+export default function Login({ onLogin, goRegister, goGuest }) {
   const [emailOrUsername, setId] = useState("");
   const [password, setPw] = useState("");
   const [err, setErr] = useState(null);
@@ -50,6 +50,9 @@ export default function Login({ onLogin, goRegister }) {
           </button>
           <button className="btn btn-ghost" type="button" onClick={goRegister}>
             Register
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={goGuest}>
+            Continue as Guest
           </button>
         </div>
       </form>

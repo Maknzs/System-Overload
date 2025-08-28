@@ -24,7 +24,7 @@ export default function Lobby({ onStart, onBack }) {
 
   return (
     <div className="page">
-      <h1 className="page-header">Local Lobby</h1>
+      <h1 className="page-header">Lobby</h1>
 
       <div className="card">
         <div className="section-title">Players</div>
