@@ -77,13 +77,6 @@ export default function Lobby({ onStart, onBack }) {
         <div className="lobby-actions">
           <button
             className="btn btn-ghost"
-            onClick={() => addPlayer(false)}
-            disabled={players.length >= 5}
-          >
-            Add Player
-          </button>
-          <button
-            className="btn btn-ghost"
             onClick={() => addPlayer(true)}
             disabled={players.length >= 5}
           >

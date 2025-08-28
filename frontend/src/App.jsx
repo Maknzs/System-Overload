@@ -72,16 +72,6 @@ export default function App() {
     <Menu
       user={user}
       onStart={() => nav("/lobby")}
-      onStartBot={() =>
-        nav("/game", {
-          state: {
-            players: [
-              { id: "1", name: user?.username || "Player 1", isBot: false },
-              { id: "2", name: "ML Bot", isBot: true },
-            ],
-          },
-        })
-      }
       onLogout={handleLogout}
     />
   );

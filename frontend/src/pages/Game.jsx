@@ -65,6 +65,7 @@ const HAND_DISPLAY_ORDER = [
 ];
 
 const STACK_SPACING = 20; // px gap between stacked duplicate cards
+const BOT_SPEEDS = [100, 250, 500, 750, 1000, 1500, 2000, 3000];
 
 function initialState(playerDefs) {
   const { deck, hands } = createDeck(playerDefs.length);
@@ -453,6 +454,11 @@ export default function Game() {
   const botTurnStartLogIndexRef = useRef(0);
   const botIntervalRef = useRef(null);
   const pendingReinsertRef = useRef(null); // { pos }
+  const botBusyRef = useRef(false); // gates bot while highlighting/sequencing
+  const [botHighlight, setBotHighlight] = useState(null); // { type, ... }
+  const [botSpeed, setBotSpeed] = useState(6); // 1..8 level (default 1500ms)
+  const botTickMs = BOT_SPEEDS[botSpeed - 1] ?? 1000; // ms
+  const botHighlightMs = Math.max(300, Math.floor(botTickMs * 0.6));
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
@@ -487,14 +493,16 @@ export default function Game() {
   useEffect(() => {
     const isBot = game.players[game.turn]?.isBot;
     setHideHand(!isBot);
-    // Track bot modal and starting log index for the current bot turn
+    // Bot pause screen between turns (2s), like human privacy screen
+    botTurnStartLogIndexRef.current = game.log.length;
     if (isBot) {
       setShowBotModal(true);
-      botTurnStartLogIndexRef.current = game.log.length;
-    } else {
-      setShowBotModal(false);
-      botTurnStartLogIndexRef.current = game.log.length;
+      const t = setTimeout(() => {
+        setShowBotModal(false);
+      }, 2000);
+      return () => clearTimeout(t);
     }
+    setShowBotModal(false);
   }, [game.turn]);
 
   // Show Health Check modal with top 3 cards
@@ -525,12 +533,12 @@ export default function Game() {
     }
   }, [game.drawnCard, game.turn, game.players]);
 
-  // Bot logic (throttled to ~1 action/2.5s)
+  // Bot logic (throttled; paused during 2s turn-start modal and while highlighting)
   useEffect(() => {
     const isBot = game.players[game.turn]?.isBot;
 
     // Clear any previous interval when turn changes or when not a bot
-    if (!isBot) {
+    if (!isBot || showBotModal) {
       if (botIntervalRef.current) {
         clearInterval(botIntervalRef.current);
         botIntervalRef.current = null;
@@ -541,12 +549,20 @@ export default function Game() {
     // Start a ticking interval that performs at most one action per tick
     if (!botIntervalRef.current) {
       botIntervalRef.current = setInterval(() => {
+        if (botBusyRef.current) return; // wait until current action completes
         // Capture live game state via closure from latest render
         // 1) If we owe a REBOOT reinsertion, do that first.
         if (pendingReinsertRef.current) {
           const { pos } = pendingReinsertRef.current;
-          pendingReinsertRef.current = null;
-          dispatch({ type: "REBOOT_INSERT", pos });
+          // highlight then perform reinsert after short delay
+          botBusyRef.current = true;
+          setBotHighlight({ type: "fatal_pos", pos });
+          setTimeout(() => {
+            pendingReinsertRef.current = null;
+            dispatch({ type: "REBOOT_INSERT", pos });
+            setBotHighlight(null);
+            botBusyRef.current = false;
+          }, botHighlightMs);
           return; // one action this tick
         }
 
@@ -575,13 +591,29 @@ export default function Game() {
 
         if (current.phase === PHASE.CHOOSING_FAVOR) {
           const toId = chooseFavorTarget(current);
-          if (toId != null) dispatch({ type: "RESOLVE_FAVOR_FROM", toId });
+          if (toId != null) {
+            botBusyRef.current = true;
+            setBotHighlight({ type: "player", playerId: toId });
+            setTimeout(() => {
+              dispatch({ type: "RESOLVE_FAVOR_FROM", toId });
+              setBotHighlight(null);
+              botBusyRef.current = false;
+            }, botHighlightMs);
+          }
           return;
         }
 
         if (current.phase === PHASE.CHOOSING_PAIR_TARGET) {
           const toId = choosePairTarget(current);
-          if (toId != null) dispatch({ type: "RESOLVE_PAIR_TARGET", toId });
+          if (toId != null) {
+            botBusyRef.current = true;
+            setBotHighlight({ type: "player", playerId: toId });
+            setTimeout(() => {
+              dispatch({ type: "RESOLVE_PAIR_TARGET", toId });
+              setBotHighlight(null);
+              botBusyRef.current = false;
+            }, botHighlightMs);
+          }
           return;
         }
 
@@ -590,13 +622,27 @@ export default function Game() {
           current.comboTarget != null
         ) {
           const index = choosePairIndex(current);
-          dispatch({ type: "RESOLVE_PAIR_FROM", index });
+          botBusyRef.current = true;
+          setBotHighlight({ type: "pair_card", index });
+          setTimeout(() => {
+            dispatch({ type: "RESOLVE_PAIR_FROM", index });
+            setBotHighlight(null);
+            botBusyRef.current = false;
+          }, botHighlightMs);
           return;
         }
 
         if (current.phase === PHASE.CHOOSING_TRIPLE_TARGET) {
           const toId = chooseTripleTarget(current);
-          if (toId != null) dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId });
+          if (toId != null) {
+            botBusyRef.current = true;
+            setBotHighlight({ type: "player", playerId: toId });
+            setTimeout(() => {
+              dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId });
+              setBotHighlight(null);
+              botBusyRef.current = false;
+            }, botHighlightMs);
+          }
           return;
         }
 
@@ -605,55 +651,84 @@ export default function Game() {
           current.comboTarget != null
         ) {
           const cardName = chooseTripleCard(current);
-          dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName });
+          botBusyRef.current = true;
+          setBotHighlight({ type: "triple_card", cardName });
+          setTimeout(() => {
+            dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName });
+            setBotHighlight(null);
+            botBusyRef.current = false;
+          }, botHighlightMs);
           return;
         }
 
         if (current.phase === PHASE.AWAIT_ACTION) {
           const decision = chooseAction(current);
+          const highlightAndDispatch = (hl, act) => {
+            botBusyRef.current = true;
+            if (hl) setBotHighlight(hl);
+            setTimeout(() => {
+              dispatch(act);
+              if (hl) setBotHighlight(null);
+              botBusyRef.current = false;
+            }, botHighlightMs);
+          };
           switch (decision?.type) {
             case "PLAY_SKIP":
-              dispatch({ type: "PLAY_SKIP" });
-              break;
+              return highlightAndDispatch(
+                { type: "hand_card", cardName: CARD.SKIP },
+                { type: "PLAY_SKIP" }
+              );
             case "PLAY_ATTACK":
-              dispatch({ type: "PLAY_ATTACK" });
-              break;
+              return highlightAndDispatch(
+                { type: "hand_card", cardName: CARD.ATTACK },
+                { type: "PLAY_ATTACK" }
+              );
             case "PLAY_SHUFFLE":
-              dispatch({ type: "PLAY_SHUFFLE" });
-              break;
+              return highlightAndDispatch(
+                { type: "hand_card", cardName: CARD.SHUFFLE },
+                { type: "PLAY_SHUFFLE" }
+              );
             case "PLAY_FUTURE":
-              dispatch({ type: "PLAY_FUTURE" });
-              break;
+              return highlightAndDispatch(
+                { type: "hand_card", cardName: CARD.FUTURE },
+                { type: "PLAY_FUTURE" }
+              );
             case "PLAY_FAVOR":
-              dispatch({ type: "PLAY_FAVOR" });
-              break;
+              return highlightAndDispatch(
+                { type: "hand_card", cardName: CARD.FAVOR },
+                { type: "PLAY_FAVOR" }
+              );
             case "PLAY_PAIR":
               if (decision.cardName) {
-                dispatch({
-                  type: "START_COMBO",
-                  cardName: decision.cardName,
-                  mode: "PAIR",
-                });
-                break;
+                return highlightAndDispatch(
+                  { type: "hand_card", cardName: decision.cardName },
+                  {
+                    type: "START_COMBO",
+                    cardName: decision.cardName,
+                    mode: "PAIR",
+                  }
+                );
               }
             // fallthrough to DRAW if no card name
             case "PLAY_TRIPLE":
               if (decision.cardName) {
-                dispatch({
-                  type: "START_COMBO",
-                  cardName: decision.cardName,
-                  mode: "TRIPLE",
-                });
-                break;
+                return highlightAndDispatch(
+                  { type: "hand_card", cardName: decision.cardName },
+                  {
+                    type: "START_COMBO",
+                    cardName: decision.cardName,
+                    mode: "TRIPLE",
+                  }
+                );
               }
             // fallthrough
             case "DRAW":
             default:
-              dispatch({ type: "DRAW" });
+              return highlightAndDispatch({ type: "deck" }, { type: "DRAW" });
           }
           return;
         }
-      }, 2500);
+      }, botTickMs);
     }
 
     // Cleanup when dependencies change (keep pendingReinsert across ticks)
@@ -671,6 +746,8 @@ export default function Game() {
     game.deck.length,
     game.hands,
     dispatch,
+    showBotModal,
+    botTickMs,
   ]);
 
   // Winner flow
@@ -792,6 +869,60 @@ export default function Game() {
             (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
           </span>
         </span>
+        {game.players.some((p) => p.isBot) && (() => {
+          const level = botSpeed; // 1..8
+          const maxLevel = BOT_SPEEDS.length; // 8
+          const t = (level - 1) / (maxLevel - 1); // 0..1
+          // Map 0..1 to red(0) -> green(120): lower -> higher
+          const hue = Math.round(t * 120);
+          const bg = `hsl(${hue} 80% 40%)`;
+          return (
+            <span className="pill" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>Bot Speed</span>
+              <button
+                className="btn btn-ghost"
+                aria-label="Slower"
+                title="Slower"
+                onClick={() => setBotSpeed((s) => Math.max(1, s - 1))}
+                disabled={botSpeed <= 1}
+                style={{ padding: "4px 8px" }}
+              >
+                ◀
+              </button>
+              <div
+                role="meter"
+                aria-valuemin={1}
+                aria-valuemax={maxLevel}
+                aria-valuenow={level}
+                title={`Bot speed: level ${level} (${botTickMs}ms)`}
+                style={{
+                  width: 120,
+                  height: 24,
+                  borderRadius: 6,
+                  background: bg,
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 700,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {botTickMs}ms
+              </div>
+              <button
+                className="btn btn-ghost"
+                aria-label="Faster"
+                title="Faster"
+                onClick={() => setBotSpeed((s) => Math.min(maxLevel, s + 1))}
+                disabled={botSpeed >= maxLevel}
+                style={{ padding: "4px 8px" }}
+              >
+                ▶
+              </button>
+            </span>
+          );
+        })()}
       </div>
 
       {/* Pass-Device modal */}
@@ -807,19 +938,32 @@ export default function Game() {
           <DiscardPile cards={game.discard} maxToShow={10} />
         </div>
         <div className="card deck-area__left">
-          <DeckCard
-            count={game.deck.length}
-            onClick={() => {
-              if (!me?.isBot && !game.fatalCard) dispatch({ type: "DRAW" });
-            }}
-            disabled={
-              hideHand ||
-              me?.isBot ||
-              game.phase !== PHASE.AWAIT_ACTION ||
-              !!game.fatalCard ||
-              !!game.drawnCard
+          <div
+            style={
+              botHighlight?.type === "deck"
+                ? {
+                    outline: "4px solid var(--accent)",
+                    borderRadius: 12,
+                    padding: 2,
+                    display: "inline-block",
+                  }
+                : undefined
             }
-          />
+          >
+            <DeckCard
+              count={game.deck.length}
+              onClick={() => {
+                if (!me?.isBot && !game.fatalCard) dispatch({ type: "DRAW" });
+              }}
+              disabled={
+                hideHand ||
+                me?.isBot ||
+                game.phase !== PHASE.AWAIT_ACTION ||
+                !!game.fatalCard ||
+                !!game.drawnCard
+              }
+            />
+          </div>
           <div>
             <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
               {game.deck.length}
@@ -867,8 +1011,8 @@ export default function Game() {
         )}
       </Modal>
 
-      {/* Health Check modal */}
-      <Modal show={showPeekModal}>
+      {/* Health Check modal (hidden during bot turns) */}
+      <Modal show={showPeekModal && !game.players[game.turn]?.isBot}>
         <div className="section-title">Health Check (top 3)</div>
         <div className="hstack" style={{ justifyContent: "center" }}>
           {[...game.peek].reverse().map((c, i) => (
@@ -921,6 +1065,12 @@ export default function Game() {
                     dispatch({ type: "USE_REBOOT_OR_EXPLODE" });
                     onReinsert(pos);
                   }}
+                  style={
+                    botHighlight?.type === "fatal_pos" &&
+                    botHighlight.pos === pos
+                      ? { outline: "4px solid var(--accent)" }
+                      : undefined
+                  }
                 >
                   {pos === 0
                     ? "Top"
@@ -955,6 +1105,12 @@ export default function Game() {
                 onClick={() =>
                   dispatch({ type: "RESOLVE_FAVOR_FROM", toId: p.id })
                 }
+                style={
+                  botHighlight?.type === "player" &&
+                  botHighlight.playerId === p.id
+                    ? { outline: "4px solid var(--accent)" }
+                    : undefined
+                }
               >
                 {p.name}
               </Button>
@@ -975,6 +1131,12 @@ export default function Game() {
                 key={p.id}
                 onClick={() =>
                   dispatch({ type: "RESOLVE_PAIR_TARGET", toId: p.id })
+                }
+                style={
+                  botHighlight?.type === "player" &&
+                  botHighlight.playerId === p.id
+                    ? { outline: "4px solid var(--accent)" }
+                    : undefined
                 }
               >
                 {p.name}
@@ -1006,6 +1168,11 @@ export default function Game() {
                 onClick={() =>
                   dispatch({ type: "RESOLVE_PAIR_FROM", index: i })
                 }
+                style={
+                  botHighlight?.type === "pair_card" && botHighlight.index === i
+                    ? { outline: "4px solid var(--accent)" }
+                    : undefined
+                }
               />
             )
           )}
@@ -1025,6 +1192,12 @@ export default function Game() {
                 key={p.id}
                 onClick={() =>
                   dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId: p.id })
+                }
+                style={
+                  botHighlight?.type === "player" &&
+                  botHighlight.playerId === p.id
+                    ? { outline: "4px solid var(--accent)" }
+                    : undefined
                 }
               >
                 {p.name}
@@ -1053,6 +1226,12 @@ export default function Game() {
               onClick={() =>
                 dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName: n })
               }
+              style={
+                botHighlight?.type === "triple_card" &&
+                botHighlight.cardName === n
+                  ? { outline: "4px solid var(--accent)" }
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -1069,9 +1248,16 @@ export default function Game() {
             const text = typeof entry === "string" ? entry : entry.text || "";
             return bot && text.includes(bot.name);
           });
+          const botNumber = bot
+            ? game.players
+                .filter((p) => p.isBot)
+                .findIndex((p) => p.id === bot.id) + 1
+            : null;
           return (
             <>
-              <div className="section-title">Bot Playing</div>
+              <div className="section-title">
+                {botNumber ? `Bot ${botNumber} Playing` : "Bot Playing"}
+              </div>
               <div style={{ marginBottom: 8 }}>
                 {bot ? `${bot.name} is taking actions...` : "Bot turn"}
               </div>
@@ -1206,6 +1392,8 @@ export default function Game() {
               canInspect && COMBO_CARDS.includes(c) && count < 2;
             const showInfo = needsPair || (canInspect && c === CARD.REBOOT);
 
+            const isHighlighted =
+              botHighlight?.type === "hand_card" && botHighlight.cardName === c;
             if (count === 1) {
               return (
                 <Card
@@ -1217,6 +1405,11 @@ export default function Game() {
                   disabled={!isPlayable}
                   onDisabledClick={
                     showInfo ? () => setSelectedCard(c) : undefined
+                  }
+                  style={
+                    isHighlighted
+                      ? { outline: "4px solid var(--accent)" }
+                      : undefined
                   }
                 />
               );
@@ -1242,7 +1435,12 @@ export default function Game() {
                     onDisabledClick={
                       showInfo ? () => setSelectedCard(c) : undefined
                     }
-                    style={{ "--stack-index": j }}
+                    style={{
+                      "--stack-index": j,
+                      ...(isHighlighted
+                        ? { outline: "4px solid var(--accent)" }
+                        : {}),
+                    }}
                   />
                 ))}
               </div>
