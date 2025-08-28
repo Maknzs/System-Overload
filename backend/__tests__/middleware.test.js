@@ -71,5 +71,38 @@ describe('JWT middleware verifyJwt', () => {
     expect(res.body.ok).toBe(true);
     expect(res.body.user).toEqual({ id: 'u1', username: 'alice' });
   });
-});
 
+  test('rejects token with tampered payload (invalid signature)', async () => {
+    const good = jwt.sign({ sub: 'u1', username: 'alice' }, SECRET, { expiresIn: '1h' });
+    // Tamper: change one character in payload segment
+    const parts = good.split('.');
+    const payload = parts[1];
+    // Flip last char safely
+    const tamperedPayload = payload.slice(0, -1) + (payload.slice(-1) === 'A' ? 'B' : 'A');
+    const tampered = [parts[0], tamperedPayload, parts[2]].join('.');
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${tampered}`);
+    expect(res.status).toBe(401);
+    expect(res.body.error && res.body.error.code).toBe('BAD_TOKEN');
+  });
+
+  test("rejects token with alg='none' (unsigned)", async () => {
+    // Manually craft an unsigned JWT: header {alg:'none'}, empty signature
+    function b64url(obj) {
+      return Buffer.from(JSON.stringify(obj))
+        .toString('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+    }
+    const header = { alg: 'none', typ: 'JWT' };
+    const payload = { sub: 'u1', username: 'alice', iat: Math.floor(Date.now() / 1000) };
+    const token = `${b64url(header)}.${b64url(payload)}.`; // empty signature
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(401);
+    expect(res.body.error && res.body.error.code).toBe('BAD_TOKEN');
+  });
+});

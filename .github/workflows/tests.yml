@@ -1,0 +1,151 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: ["**"]
+
+jobs:
+  backend:
+    name: Backend (Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        working-directory: backend
+        run: npm ci
+      - name: Run tests
+        working-directory: backend
+        run: npm test -- --runInBand --coverage
+      - name: Coverage summary (backend)
+        if: always()
+        working-directory: backend
+        run: |
+          test -f coverage/coverage-summary.json && cat coverage/coverage-summary.json || echo "No coverage summary found"
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+      - name: Upload to Codecov (backend)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage/lcov.info
+          flags: backend
+          fail_ci_if_error: false
+
+  frontend:
+    name: Frontend (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install deps
+        working-directory: frontend
+        run: |
+          npm ci || npm install
+      - name: Lint (ESLint + a11y)
+        working-directory: frontend
+        run: npm run lint
+      - name: Run unit tests
+        working-directory: frontend
+        run: npm run test:unit -- --coverage --reporter=dot
+      - name: Coverage summary (frontend)
+        if: always()
+        working-directory: frontend
+        run: |
+          test -f coverage/coverage-summary.json && cat coverage/coverage-summary.json || echo "No coverage summary found"
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+      - name: Upload to Codecov (frontend)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            frontend/coverage/lcov.info
+            frontend/coverage/lcov/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps
+      - name: Run Playwright tests
+        working-directory: e2e
+        env:
+          CI: true
+        run: npx playwright test --reporter=line
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+
+  load:
+    name: Load (k6 light scenario)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Start API (memory Mongo)
+        run: |
+          node backend/scripts/start-memory.js &
+          for i in {1..30}; do
+            curl -fsS http://localhost:8080/api/health && break || sleep 1;
+          done
+      - name: Run k6 scenario
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: load/k6-login-account.js
+          flags: --vus 1 --iterations 3

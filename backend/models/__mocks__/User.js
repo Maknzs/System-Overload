@@ -38,9 +38,10 @@ const User = {
   },
   async create({ email, username, passwordHash, gamesPlayed = 0 }) {
     const now = new Date().toISOString();
+    const newId = String(idSeq++);
     const doc = {
-      id: String(idSeq++),
-      _id: String(idSeq),
+      id: newId,
+      _id: newId,
       email,
       username,
       passwordHash,
