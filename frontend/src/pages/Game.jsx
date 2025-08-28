@@ -583,6 +583,11 @@ export default function Game() {
           <DiscardPile cards={game.discard} maxToShow={10} />
         </div>
         <div className="card deck-area__left">
+          <DeckCard
+            count={game.deck.length}
+            onClick={() => dispatch({ type: "DRAW" })}
+            disabled={hideHand || game.phase !== PHASE.AWAIT_ACTION}
+          />
           <div>
             <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
               {game.deck.length}
@@ -592,16 +597,12 @@ export default function Game() {
               <br />
               Remain
               <br />
-              Click →<br />
+              ← Click
+              <br />
               for your <br />
               FATE
             </div>
           </div>
-          <DeckCard
-            count={game.deck.length}
-            onClick={() => dispatch({ type: "DRAW" })}
-            disabled={hideHand || game.phase !== PHASE.AWAIT_ACTION}
-          />
         </div>
       </div>
 
