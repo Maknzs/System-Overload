@@ -1,4 +1,4 @@
-snodgrass.ai, www.snodgrass.ai {
+system-overload.com, www.system-overload.com {
     encode gzip
 
     # 1) Proxy all /api/* (any method) to the API container
