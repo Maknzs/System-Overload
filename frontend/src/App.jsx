@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 import { useEffect, useState, useCallback } from "react";
-import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Menu from "./pages/Menu.jsx";
 import Lobby from "./pages/Lobby.jsx";
 import Game from "./pages/Game.jsx";
@@ -10,7 +10,6 @@ import { api } from "./api"; // assumes you already have this helper
 
 export default function App() {
   const nav = useNavigate();
-  const loc = useLocation();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
   const [guest, setGuest] = useState(false);
@@ -22,14 +21,7 @@ export default function App() {
     else localStorage.removeItem("token");
   }, [token]);
 
-  // If we end up on /login with a token but no user, clear it immediately
-  useEffect(() => {
-    if (loc.pathname === "/login" && token && !user) {
-      try { localStorage.removeItem("token"); } catch {}
-      setToken("");
-      setUser(null);
-    }
-  }, [loc.pathname, token, user]);
+  // (Removed auto-clear on /login; 401 handler already clears tokens.)
 
   // try to fetch the current user with the token
   useEffect(() => {
@@ -93,13 +85,17 @@ export default function App() {
       <Route
         path="/"
         element={
-          authed && user ? (
-            <Menu
-              user={user}
-              onStart={() => nav("/lobby")}
-              onLogout={handleLogout}
-              onUserUpdate={setUser}
-            />
+          authed ? (
+            user ? (
+              <Menu
+                user={user}
+                onStart={() => nav("/lobby")}
+                onLogout={handleLogout}
+                onUserUpdate={setUser}
+              />
+            ) : (
+              <div style={{ padding: 16 }}>Loading…</div>
+            )
           ) : (
             <Navigate to="/login" replace />
           )
