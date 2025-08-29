@@ -24,6 +24,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   const [currPw, setCurrPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newPw2, setNewPw2] = useState("");
+  const anyOpen = showEmail || showUsername || showPassword;
 
   async function refreshUser() {
     try {
@@ -108,11 +109,13 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
         <span className="badge">Local</span>
       </div>
 
-      <div className="card user-card" style={{ marginBottom: 16 }}>
-        <div>Username: {user?.username}</div>
-        <div>Email: {user?.email}</div>
-        <div>Games played: {user?.gamesPlayed ?? 0}</div>
-      </div>
+      {!anyOpen && (
+        <div className="card user-card" style={{ marginBottom: 16 }}>
+          <div>Username: {user?.username}</div>
+          <div>Email: {user?.email}</div>
+          <div>Games played: {user?.gamesPlayed ?? 0}</div>
+        </div>
+      )}
 
       <div className="actions" style={{ marginBottom: 16 }}>
         <button className="btn btn-accent" onClick={onStart}>
