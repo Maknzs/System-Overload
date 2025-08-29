@@ -18,6 +18,8 @@
 }
 
 .modal-content {
+  position: relative;
+  z-index: 1;
   width: min(520px, 92vw);
   background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
   border: 1px solid var(--border);
@@ -28,4 +30,15 @@
   display: flex;
   flex-direction: column;
   align-items: center; /* horizontally center everything inside */
+}
+
+.modal-dismiss {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: default;
 }

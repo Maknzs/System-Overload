@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import App from './App.jsx';
 
 vi.mock('./api', () => {
-  const api = vi.fn(async (path, opts = {}) => {
+  const api = vi.fn(async (path, _opts = {}) => {
     // Default mock: unauthenticated unless overridden per-test
     if (path === '/auth/me') {
       throw new Error('unauthorized');
@@ -74,4 +74,3 @@ describe('App routing and token persistence', () => {
     expect(localStorage.getItem('token')).toBeNull();
   });
 });
-

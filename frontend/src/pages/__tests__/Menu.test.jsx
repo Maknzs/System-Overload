@@ -6,7 +6,7 @@ import Menu from '../Menu.jsx';
 vi.mock('../../api', () => {
   const impl = (
     path,
-    opts = {}
+    _opts = {}
   ) => {
     if (path === '/auth/me') return Promise.resolve({ email: 'u@example.com', username: 'newu', gamesPlayed: 1 });
     return Promise.resolve({ ok: true });
@@ -73,4 +73,3 @@ describe('Menu page', () => {
     expect(api.updatePassword).not.toHaveBeenCalled();
   });
 });
-
