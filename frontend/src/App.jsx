@@ -32,10 +32,17 @@ export default function App() {
       try {
         const me = await api("/auth/me"); // your backend should return the user
         if (!ignore) setUser(me);
-      } catch {
+      } catch (e) {
+        // Clear token only on auth errors (401 / BAD_TOKEN). Keep token on transient failures.
         if (!ignore) {
-          setToken("");
-          setUser(null);
+          const msg = String(e && e.message ? e.message : "");
+          const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
+          if (authError) {
+            setToken("");
+            setUser(null);
+          } else {
+            setUser((u) => u || null);
+          }
         }
       }
     })();
