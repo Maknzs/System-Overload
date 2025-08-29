@@ -9,7 +9,7 @@
   --primary: #4f46e5; /* indigo-600 */
   --primary-700: #4338ca;
   --accent: #f97316; /* orange-500 */
-  --success: #10b981; /* emerald-500 */
+  --success: #0c8f3e; /* emerald-500 */
   --danger: #ef4444; /* red-500 */
   --warning: #f59e0b; /* amber-500 */
 
@@ -55,6 +55,22 @@ body {
   opacity: 0.85;
 }
 
+/* Utility: preserve newlines in text */
+.multiline {
+  white-space: pre-line;
+}
+
+/* Card descriptions ~20% smaller */
+.card-desc {
+  line-height: 1.25;
+}
+.section-title.card-desc {
+  font-size: 18px;
+}
+.subtle.card-desc {
+  font-size: 0.8em;
+}
+
 /* Section container */
 .card {
   background: linear-gradient(180deg, var(--card), #121a42);
@@ -79,6 +95,12 @@ body {
 }
 .section-title {
   font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.card-disc {
+  font-size: 12px;
   font-weight: 700;
   margin: 0 0 10px;
 }

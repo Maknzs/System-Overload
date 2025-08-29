@@ -73,6 +73,8 @@ function initialState(names) {
     combo: null,
     drawnCard: null,
     advanceAfterDraw: false,
+    // Messaging
+    tripleFail: null, // { toId, cardName }
 
     // Attack handoff
     pendingExtraTurnsFor: null, // who will receive extra turns next
@@ -353,10 +355,16 @@ function reducer(state, action) {
         );
       } else {
         S.log.push(`${S.players[toId].name} did not have ${cardName}.`);
+        S.tripleFail = { toId, cardName };
       }
       S.comboTarget = null;
       S.combo = null;
       S.phase = PHASE.AWAIT_ACTION;
+      return S;
+    }
+
+    case "ACK_TRIPLE_FAIL": {
+      S.tripleFail = null;
       return S;
     }
 
@@ -422,6 +430,7 @@ export default function Game() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
   const [flipFatal, setFlipFatal] = useState(false);
+  const [flipReboot, setFlipReboot] = useState(false);
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
@@ -500,10 +509,31 @@ export default function Game() {
     setFlipFatal(false);
   }, [game.phase, hasReboot]);
 
-  const fatalCardSrc =
-    game.phase === PHASE.RESOLVE_FATAL && !hasReboot && flipFatal
-      ? STOCK_CARD_IMG
-      : CARD_IMG[CARD.FATAL];
+  // Flip between Fatal and Reboot visuals when Reboot is available
+  useEffect(() => {
+    if (game.phase === PHASE.RESOLVE_FATAL && hasReboot) {
+      const interval = setInterval(() => setFlipReboot((f) => !f), 750);
+      return () => clearInterval(interval);
+    }
+    setFlipReboot(false);
+  }, [game.phase, hasReboot]);
+
+  const fatalCardSrc = (() => {
+    if (game.phase !== PHASE.RESOLVE_FATAL) return CARD_IMG[CARD.FATAL];
+    if (hasReboot)
+      return flipReboot ? CARD_IMG[CARD.REBOOT] : CARD_IMG[CARD.FATAL];
+    return flipFatal ? STOCK_CARD_IMG : CARD_IMG[CARD.FATAL];
+  })();
+
+  const fatalTitleText =
+    game.phase === PHASE.RESOLVE_FATAL && hasReboot && flipReboot
+      ? "Reboot Successful!"
+      : `${CARD.FATAL}!`;
+
+  const fatalTitleStyle =
+    game.phase === PHASE.RESOLVE_FATAL && hasReboot
+      ? { color: flipReboot ? "var(--success)" : "var(--danger)" }
+      : undefined;
 
   const countAlive = game.players.filter((p) => p.alive).length;
   const canPlayNow =
@@ -632,10 +662,14 @@ export default function Game() {
       </div>
 
       {/* Drawn card modal */}
-      <Modal show={!!game.drawnCard}>
+      <Modal
+        show={!!game.drawnCard}
+        onClose={() => dispatch({ type: "END_DRAW" })}
+        dismissOnClick
+      >
         {game.drawnCard && (
           <>
-            <div className="modal-title">{game.drawnCard}</div>
+            <div className="modal-title">Success!</div>
             <div
               className="hstack"
               style={{ justifyContent: "center", margin: "10px 0" }}
@@ -650,19 +684,34 @@ export default function Game() {
                 }}
               />
             </div>
-            <div className="subtle" style={{ marginBottom: 12 }}>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
               {CARD_DESC[game.drawnCard]}
             </div>
-            <Button onClick={() => dispatch({ type: "END_DRAW" })}>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
+            </div>
+            {/* <Button onClick={() => dispatch({ type: "END_DRAW" })}>
               Close
-            </Button>
+            </Button> */}
           </>
         )}
       </Modal>
 
       {/* Health Check modal */}
-      <Modal show={showPeekModal}>
-        <div className="section-title">Health Check (top 3)</div>
+      <Modal
+        show={showPeekModal}
+        onClose={() => {
+          setShowPeekModal(false);
+          dispatch({ type: "CLEAR_PEEK" });
+        }}
+        dismissOnClick
+      >
+        <div className="section-title">
+          Health Check (top 3 cards from the deck)
+        </div>
         <div className="hstack" style={{ justifyContent: "center" }}>
           {[...game.peek].reverse().map((c, i) => (
             <div key={i} className="peek-card">
@@ -671,21 +720,16 @@ export default function Game() {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 12 }}>
-          <Button
-            onClick={() => {
-              setShowPeekModal(false);
-              dispatch({ type: "CLEAR_PEEK" });
-            }}
-          >
-            Close
-          </Button>
+        <div className="subtle" style={{ marginTop: 12 }}>
+          Click anywhere to exit
         </div>
       </Modal>
 
       {/* Fatal resolution */}
       <Modal show={game.phase === PHASE.RESOLVE_FATAL}>
-        <div className="modal-title">{CARD.FATAL}!</div>
+        <div className="modal-title" style={fatalTitleStyle}>
+          {fatalTitleText}
+        </div>
         <div
           className="hstack"
           style={{ justifyContent: "center", margin: "10px 0" }}
@@ -851,11 +895,38 @@ export default function Game() {
         </div>
       </Modal>
 
+      {/* Triple failure modal */}
+      <Modal
+        show={!!game.tripleFail}
+        onClose={() => dispatch({ type: "ACK_TRIPLE_FAIL" })}
+        dismissOnClick
+      >
+        {game.tripleFail && (
+          <>
+            <div className="modal-title">Failure!</div>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
+              Request failed: {game.players[game.tripleFail.toId].name} does not
+              have {game.tripleFail.cardName}.
+            </div>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
+            </div>
+          </>
+        )}
+      </Modal>
+
       {/* Card action modal */}
-      <Modal show={selectedCard !== null}>
+      <Modal
+        show={selectedCard !== null}
+        onClose={() => setSelectedCard(null)}
+        dismissOnClick
+      >
         {selectedCard && (
           <>
-            <div className="section-title">{selectedCard}</div>
+            {/* <div className="section-title">{selectedCard}</div> */}
             <div
               className="hstack"
               style={{ justifyContent: "center", margin: "10px 0" }}
@@ -870,64 +941,68 @@ export default function Game() {
                 }}
               />
             </div>
-            <div className="subtle" style={{ marginBottom: 12 }}>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
               {CARD_DESC[selectedCard]}
             </div>
-            {COMBO_CARDS.includes(selectedCard) && selectedCount < 2 && (
-              <div className="subtle" style={{ marginBottom: 12 }}>
+            {/* {COMBO_CARDS.includes(selectedCard) && selectedCount < 2 && (
+              <div className="section-title" style={{ marginBottom: 12 }}>
                 This card must be paired to have available actions.
               </div>
-            )}
+            )} */}
             {selectedCard === CARD.REBOOT && (
-              <div className="subtle" style={{ marginBottom: 12 }}>
-                This card is only used to deactivate a Fatal Server Error when
-                drawn. It cannot be played during your turn.
+              <div className="section-title" style={{ marginBottom: 12 }}>
+                It cannot be played during your turn.
               </div>
             )}
-            <div className="hstack" style={{ justifyContent: "center" }}>
-              {isActionCard && (
-                <Button
-                  onClick={() => {
-                    playCardByName(selectedCard);
-                    setSelectedCard(null);
-                  }}
-                  disabled={!canPlaySelected}
-                >
-                  Play
-                </Button>
-              )}
-              {COMBO_CARDS.includes(selectedCard) && (
-                <>
+              <div className="hstack" style={{ justifyContent: "center" }}>
+                {isActionCard && selectedCard !== CARD.REBOOT && (
                   <Button
                     onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "PAIR",
-                      });
+                      playCardByName(selectedCard);
                       setSelectedCard(null);
                     }}
-                    disabled={!canPair}
+                    disabled={!canPlaySelected}
                   >
-                    Pair
+                    Play
                   </Button>
-                  <Button
-                    onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "TRIPLE",
-                      });
-                      setSelectedCard(null);
-                    }}
-                    disabled={!canTriple}
-                  >
-                    Triple
-                  </Button>
-                </>
-              )}
-              <Button onClick={() => setSelectedCard(null)}>Cancel</Button>
-            </div>
+                )}
+                {COMBO_CARDS.includes(selectedCard) && (
+                  <>
+                    <Button
+                      onClick={() => {
+                        dispatch({
+                          type: "START_COMBO",
+                          cardName: selectedCard,
+                          mode: "PAIR",
+                        });
+                        setSelectedCard(null);
+                      }}
+                      disabled={!canPair}
+                    >
+                      Pair
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        dispatch({
+                          type: "START_COMBO",
+                          cardName: selectedCard,
+                          mode: "TRIPLE",
+                        });
+                        setSelectedCard(null);
+                      }}
+                      disabled={!canTriple}
+                    >
+                      Triple
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="subtle" style={{ marginTop: 12 }}>
+                Click anywhere to exit
+              </div>
           </>
         )}
       </Modal>

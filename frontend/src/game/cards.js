@@ -114,13 +114,13 @@ export const CARD_DESC = {
   [CARD.FUTURE]: "Look at the top three cards of the deck.",
   [CARD.FAVOR]: "Request a random card from another player.",
   [CARD.TAMPERED]:
-    "Play two to steal a random card. Play three to name and take a specific card.",
+    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
   [CARD.NEW_ERROR]:
-    "Play two to steal a random card. Play three to name and take a specific card.",
+    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
   [CARD.VALID_CREDS]:
-    "Play two to steal a random card. Play three to name and take a specific card.",
+    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
   [CARD.ROGUE_AV]:
-    "Play two to steal a random card. Play three to name and take a specific card.",
+    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
   [CARD.COFFEE]:
-    "Play two to steal a random card. Play three to name and take a specific card.",
+    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
 };

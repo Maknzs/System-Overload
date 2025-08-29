@@ -38,7 +38,7 @@
   margin-top: 8px;
 }
 .modal-title {
-  color: red;
+  color: var(--text);
   font-size: 50px;
   font-weight: 700;
   margin: 0 0 10px;
