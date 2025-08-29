@@ -148,11 +148,9 @@ jobs:
           for i in {1..30}; do
             curl -fsS http://localhost:8080/api/health && break || sleep 1;
           done
-      - name: Run k6 scenario
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: load/k6-login-account.js
-          flags: --vus 1 --iterations 3
+      - name: Install k6
+        uses: grafana/setup-k6-action@v0.2.0
+      - name: Run k6 scenario (host)
         env:
-          # Point k6 (running in a Docker action) to the API started on the host runner
-          API_BASE: http://host.docker.internal:8080/api
+          API_BASE: http://localhost:8080/api
+        run: k6 run load/k6-login-account.js --vus 1 --iterations 3
