@@ -100,6 +100,9 @@ jobs:
         with:
           node-version: 18
           cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
       - name: Install backend deps
         working-directory: backend
         run: npm ci
@@ -150,3 +153,6 @@ jobs:
         with:
           filename: load/k6-login-account.js
           flags: --vus 1 --iterations 3
+        env:
+          # Point k6 (running in a Docker action) to the API started on the host runner
+          API_BASE: http://host.docker.internal:8080/api
