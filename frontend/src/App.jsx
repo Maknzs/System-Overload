@@ -23,6 +23,27 @@ export default function App() {
 
   // (Removed auto-clear on /login; 401 handler already clears tokens.)
 
+  // Quickly reject obviously bad or expired tokens without waiting for /auth/me
+  useEffect(() => {
+    if (!token) return;
+    try {
+      const parts = String(token).split(".");
+      if (parts.length !== 3) throw new Error("malformed");
+      // Base64URL decode
+      const b64 = (s) => s.replace(/-/g, "+").replace(/_/g, "/");
+      const json = atob(b64(parts[1]));
+      const payload = JSON.parse(json || "{}");
+      const expMs = typeof payload.exp === "number" ? payload.exp * 1000 : null;
+      if (!expMs || expMs < Date.now()) throw new Error("expired");
+      // Looks fine; let /auth/me validate server-side
+    } catch (_) {
+      try { localStorage.removeItem("token"); } catch {}
+      setToken("");
+      setUser(null);
+      nav("/login");
+    }
+  }, [token, nav]);
+
   // try to fetch the current user with the token
   useEffect(() => {
     let ignore = false;
