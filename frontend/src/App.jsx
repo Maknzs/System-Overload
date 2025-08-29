@@ -107,16 +107,29 @@ export default function App() {
       <Route
         path="/login"
         element={
-          <Login
-            onLogin={handleLogin}
-            goRegister={() => nav("/register")}
-            goGuest={handleGuest}
-          />
+          authed ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Login
+              onLogin={handleLogin}
+              goRegister={() => nav("/register")}
+              goGuest={handleGuest}
+            />
+          )
         }
       />
       <Route
         path="/register"
-        element={<Register goLogin={() => nav("/login")} onRegistered={() => nav("/login")} />}
+        element={
+          authed ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Register
+              goLogin={() => nav("/login")}
+              onRegistered={() => nav("/login")}
+            />
+          )
+        }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
