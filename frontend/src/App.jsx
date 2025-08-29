@@ -81,7 +81,7 @@ export default function App() {
       <Route
         path="/"
         element={
-          authed ? (
+          authed && user ? (
             <Menu
               user={user}
               onStart={() => nav("/lobby")}
@@ -116,7 +116,7 @@ export default function App() {
       <Route
         path="/login"
         element={
-          authed ? (
+          authed && user ? (
             <Navigate to="/" replace />
           ) : (
             <Login
@@ -130,7 +130,7 @@ export default function App() {
       <Route
         path="/register"
         element={
-          authed ? (
+          authed && user ? (
             <Navigate to="/" replace />
           ) : (
             <Register

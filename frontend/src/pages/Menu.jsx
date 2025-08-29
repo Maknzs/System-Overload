@@ -139,7 +139,15 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowEmail((v) => {
                     const nv = !v;
-                    if (!nv) { setNewEmail(""); setEmailPw(""); }
+                    if (nv) {
+                      // Close other sections to avoid duplicate fields
+                      setShowUsername(false);
+                      setShowPassword(false);
+                      setNewUsername(""); setUserPw("");
+                      setCurrPw(""); setNewPw(""); setNewPw2("");
+                    } else {
+                      setNewEmail(""); setEmailPw("");
+                    }
                     return nv;
                   });
                 }}
@@ -199,7 +207,14 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowUsername((v) => {
                     const nv = !v;
-                    if (!nv) { setNewUsername(""); setUserPw(""); }
+                    if (nv) {
+                      setShowEmail(false);
+                      setShowPassword(false);
+                      setNewEmail(""); setEmailPw("");
+                      setCurrPw(""); setNewPw(""); setNewPw2("");
+                    } else {
+                      setNewUsername(""); setUserPw("");
+                    }
                     return nv;
                   });
                 }}
@@ -259,7 +274,14 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowPassword((v) => {
                     const nv = !v;
-                    if (!nv) { setCurrPw(""); setNewPw(""); setNewPw2(""); }
+                    if (nv) {
+                      setShowEmail(false);
+                      setShowUsername(false);
+                      setNewEmail(""); setEmailPw("");
+                      setNewUsername(""); setUserPw("");
+                    } else {
+                      setCurrPw(""); setNewPw(""); setNewPw2("");
+                    }
                     return nv;
                   });
                 }}
