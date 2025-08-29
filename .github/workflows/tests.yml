@@ -149,7 +149,7 @@ jobs:
             curl -fsS http://localhost:8080/api/health && break || sleep 1;
           done
       - name: Install k6
-        uses: grafana/setup-k6-action@v0.2.0
+        uses: grafana/setup-k6-action@v1
       - name: Run k6 scenario (host)
         env:
           API_BASE: http://localhost:8080/api
