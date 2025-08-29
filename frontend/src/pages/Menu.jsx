@@ -109,15 +109,9 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       </div>
 
       <div className="card user-card" style={{ marginBottom: 16 }}>
-        <div>
-          <strong>Username:</strong> {user?.username}
-        </div>
-        <div>
-          <strong>Email:</strong> {user?.email}
-        </div>
-        <div>
-          <strong>Games played:</strong> {user?.gamesPlayed ?? 0}
-        </div>
+        <div>Username: {user?.username}</div>
+        <div>Email: {user?.email}</div>
+        <div>Games played: {user?.gamesPlayed ?? 0}</div>
       </div>
 
       <div className="actions" style={{ marginBottom: 16 }}>

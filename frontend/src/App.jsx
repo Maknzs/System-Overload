@@ -40,6 +40,8 @@ export default function App() {
           if (authError) {
             setToken("");
             setUser(null);
+            // Ensure router navigates away from protected routes
+            nav("/login");
           } else {
             setUser((u) => u || null);
           }
@@ -49,7 +51,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [token]);
+  }, [token, nav]);
 
   const handleLogin = useCallback(
     (t, u) => {
