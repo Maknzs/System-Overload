@@ -178,7 +178,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   <input
                     className="input"
                     type="password"
-                    placeholder="Current password"
+                    placeholder="Current account password"
                     value={emailPw}
                     name="current-password"
                     autoComplete="current-password"
@@ -238,7 +238,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   <input
                     className="input"
                     type="password"
-                    placeholder="Current password"
+                    placeholder="Current account password"
                     value={userPw}
                     name="current-password"
                     autoComplete="current-password"
@@ -262,14 +262,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowPassword((v) => {
                     const nv = !v;
-                    if (nv) {
-                      setShowEmail(false);
-                      setShowUsername(false);
-                      setNewEmail(""); setEmailPw("");
-                      setNewUsername(""); setUserPw("");
-                    } else {
-                      setCurrPw(""); setNewPw(""); setNewPw2("");
-                    }
+                    if (!nv) { setCurrPw(""); setNewPw(""); setNewPw2(""); }
                     return nv;
                   });
                 }}
