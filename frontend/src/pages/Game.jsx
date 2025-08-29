@@ -621,7 +621,7 @@ export default function Game() {
 
   return (
     <div className="page">
-      <h1 className="page-header">System Overload</h1>
+      <h1 className="page-header">System-Overload</h1>
 
       {/* Meta pills */}
       <div className="meta">

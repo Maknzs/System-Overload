@@ -4,7 +4,8 @@ import "./Menu.css";
 
 // Map API errors to clear, user-friendly messages
 function humanizeAccountError(kind, err) {
-  const code = err && (err.code || (err.body && err.body.error && err.body.error.code));
+  const code =
+    err && (err.code || (err.body && err.body.error && err.body.error.code));
   const status = err && err.status;
   const raw = (err && err.message) || "";
   const lower = raw.toLowerCase();
@@ -33,19 +34,25 @@ function humanizeAccountError(kind, err) {
   }
 
   // Fallbacks based on common substrings in error messages
-  if (lower.includes("invalid password")) return "Incorrect password. Please try again.";
+  if (lower.includes("invalid password"))
+    return "Incorrect password. Please try again.";
   if (lower.includes("already in use")) {
-    return kind === "email" ? "That email is already in use." : "That username is already taken.";
+    return kind === "email"
+      ? "That email is already in use."
+      : "That username is already taken.";
   }
-  if (lower.includes("must be different")) return "New password must be different from the current password.";
-  if (lower.includes("isemail") || lower.includes("invalid email")) return "Please enter a valid email address.";
+  if (lower.includes("must be different"))
+    return "New password must be different from the current password.";
+  if (lower.includes("isemail") || lower.includes("invalid email"))
+    return "Please enter a valid email address.";
   if (lower.includes("min") || lower.includes("length")) {
     if (kind === "username") return "Username must be at least 3 characters.";
     if (kind === "password") return "Password must be at least 8 characters.";
   }
   if (status === 429) return "Too many attempts. Please wait and try again.";
   if (status && status >= 500) return "Server error. Please try again later.";
-  if (lower.includes("failed to fetch") || lower.includes("network")) return "Network error. Check your connection and try again.";
+  if (lower.includes("failed to fetch") || lower.includes("network"))
+    return "Network error. Check your connection and try again.";
 
   return `Failed to update ${kind}`;
 }
@@ -161,7 +168,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   return (
     <div className="page menu-page">
       <div className="menu-header">
-        <h1 className="page-header">System Overload</h1>
+        <h1 className="page-header">System-Overload</h1>
         <span className="badge">Local</span>
       </div>
 
