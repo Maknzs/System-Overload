@@ -164,8 +164,8 @@ export default function App() {
           authed || guest ? (
             <Lobby
               onStart={(players) => {
-                const names = players.map((p) => p.name);
-                nav("/game", { state: { names } });
+                // Preserve isBot flags and names so Game can identify bots
+                nav("/game", { state: { players } });
               }}
               onBack={() => nav("/")}
             />
