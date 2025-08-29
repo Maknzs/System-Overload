@@ -26,9 +26,10 @@ export default function App() {
   // Quickly reject obviously bad or expired tokens without waiting for /auth/me
   useEffect(() => {
     if (!token) return;
+    const parts = String(token).split(".");
+    // Only pre-validate if token looks like a JWT; otherwise defer to /auth/me
+    if (parts.length !== 3) return;
     try {
-      const parts = String(token).split(".");
-      if (parts.length !== 3) throw new Error("malformed");
       // Base64URL decode
       const b64 = (s) => s.replace(/-/g, "+").replace(/_/g, "/");
       const json = atob(b64(parts[1]));
