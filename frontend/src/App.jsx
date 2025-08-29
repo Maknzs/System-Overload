@@ -145,7 +145,7 @@ export default function App() {
       <Route
         path="/login"
         element={
-          authed && user ? (
+          authed ? (
             <Navigate to="/" replace />
           ) : (
             <Login
@@ -159,7 +159,7 @@ export default function App() {
       <Route
         path="/register"
         element={
-          authed && user ? (
+          authed ? (
             <Navigate to="/" replace />
           ) : (
             <Register
