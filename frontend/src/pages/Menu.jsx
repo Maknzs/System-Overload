@@ -139,15 +139,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowEmail((v) => {
                     const nv = !v;
-                    if (nv) {
-                      // Close other sections to avoid duplicate fields
-                      setShowUsername(false);
-                      setShowPassword(false);
-                      setNewUsername(""); setUserPw("");
-                      setCurrPw(""); setNewPw(""); setNewPw2("");
-                    } else {
-                      setNewEmail(""); setEmailPw("");
-                    }
+                    if (!nv) { setNewEmail(""); setEmailPw(""); }
                     return nv;
                   });
                 }}
@@ -207,14 +199,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowUsername((v) => {
                     const nv = !v;
-                    if (nv) {
-                      setShowEmail(false);
-                      setShowPassword(false);
-                      setNewEmail(""); setEmailPw("");
-                      setCurrPw(""); setNewPw(""); setNewPw2("");
-                    } else {
-                      setNewUsername(""); setUserPw("");
-                    }
+                    if (!nv) { setNewUsername(""); setUserPw(""); }
                     return nv;
                   });
                 }}

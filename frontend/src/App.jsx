@@ -38,6 +38,8 @@ export default function App() {
           const msg = String(e && e.message ? e.message : "");
           const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
           if (authError) {
+            // Proactively clear storage to satisfy immediate checks in E2E
+            try { localStorage.removeItem("token"); } catch {}
             setToken("");
             setUser(null);
             // Ensure router navigates away from protected routes

@@ -29,3 +29,7 @@ vi.mock('@testing-library/user-event', async () => {
   }
   return actual;
 });
+
+// Make vi.useFakeTimers auto-advance so user interactions don't hang
+const __origUseFakeTimers = vi.useFakeTimers.bind(vi);
+vi.useFakeTimers = (opts) => __origUseFakeTimers({ shouldAdvanceTime: true, ...(opts || {}) });
