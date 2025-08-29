@@ -50,6 +50,17 @@ jobs:
               git clone https://github.com/Maknzs/SystemOverload.git .
             fi
             git pull --rebase
+            echo "--- Disk usage before prune ---"
+            df -h || true
+            docker system df || true
+            echo "--- Pruning Docker caches to free space ---"
+            # Free up space proactively to avoid ENOSPC during image build
+            docker builder prune -af || true
+            docker system prune -af || true
+            # Note: DO NOT prune volumes to preserve Caddy/ACME certs
+            echo "--- Disk usage after prune ---"
+            df -h || true
+            docker system df || true
             docker-compose build --pull
             docker-compose up -d
             docker image prune -f
