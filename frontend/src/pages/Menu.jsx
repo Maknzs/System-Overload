@@ -262,7 +262,15 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                 onClick={() => {
                   setShowPassword((v) => {
                     const nv = !v;
-                    if (!nv) { setCurrPw(""); setNewPw(""); setNewPw2(""); }
+                    if (nv) {
+                      // When opening Password, close other sections to avoid duplicate fields
+                      setShowEmail(false);
+                      setShowUsername(false);
+                      setNewEmail(""); setEmailPw("");
+                      setNewUsername(""); setUserPw("");
+                    } else {
+                      setCurrPw(""); setNewPw(""); setNewPw2("");
+                    }
                     return nv;
                   });
                 }}
