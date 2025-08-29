@@ -178,7 +178,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   <input
                     className="input"
                     type="password"
-                    placeholder="Current account password"
+                    placeholder="Current password"
                     value={emailPw}
                     name="current-password"
                     autoComplete="current-password"
@@ -238,7 +238,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   <input
                     className="input"
                     type="password"
-                    placeholder="Current account password"
+                    placeholder="Current password"
                     value={userPw}
                     name="current-password"
                     autoComplete="current-password"

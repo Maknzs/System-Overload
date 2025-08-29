@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 import { useEffect, useState, useCallback } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Menu from "./pages/Menu.jsx";
 import Lobby from "./pages/Lobby.jsx";
 import Game from "./pages/Game.jsx";
@@ -10,6 +10,7 @@ import { api } from "./api"; // assumes you already have this helper
 
 export default function App() {
   const nav = useNavigate();
+  const loc = useLocation();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
   const [guest, setGuest] = useState(false);
@@ -20,6 +21,15 @@ export default function App() {
     if (token) localStorage.setItem("token", token);
     else localStorage.removeItem("token");
   }, [token]);
+
+  // If we end up on /login with a token but no user, clear it immediately
+  useEffect(() => {
+    if (loc.pathname === "/login" && token && !user) {
+      try { localStorage.removeItem("token"); } catch {}
+      setToken("");
+      setUser(null);
+    }
+  }, [loc.pathname, token, user]);
 
   // try to fetch the current user with the token
   useEffect(() => {
