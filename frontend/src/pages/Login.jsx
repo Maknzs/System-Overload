@@ -1,6 +1,4 @@
-import React, { useState } from "react";
-import Button from "../components/Button";
-import TextInput from "../components/TextInput";
+import { useState } from "react";
 import { api } from "../api";
 import "./Login.css";
 
@@ -34,6 +32,11 @@ export default function Login({ onLogin, goRegister, goGuest }) {
         <input
           className="input"
           placeholder="Email or Username"
+          name="username"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={emailOrUsername}
           onChange={(e) => setId(e.target.value)}
         />
@@ -41,6 +44,8 @@ export default function Login({ onLogin, goRegister, goGuest }) {
           className="input"
           type="password"
           placeholder="Password"
+          name="current-password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPw(e.target.value)}
         />

@@ -30,7 +30,7 @@
 .discard__stack {
   position: relative;
   width: 100%; /* use all the available width */
-  height: 175px;
+  height: 180px; /* match deck card height */
   margin-top: 0;
   margin-left: -15px;
 }
@@ -39,9 +39,9 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 130px;
-  height: 180px;
-  border-radius: 12px;
+  width: 130px;  /* match deck card width */
+  height: 180px; /* match deck card height */
+  border-radius: 14px; /* match deck card radius */
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);

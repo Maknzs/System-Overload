@@ -87,6 +87,8 @@ function initialState(playerDefs) {
     combo: null,
     drawnCard: null,
     advanceAfterDraw: false,
+    // Messaging
+    tripleFail: null, // { toId, cardName }
 
     // Attack handoff
     pendingExtraTurnsFor: null, // who will receive extra turns next
@@ -371,10 +373,16 @@ function reducer(state, action) {
         );
       } else {
         S.log.push(`${S.players[toId].name} did not have ${cardName}.`);
+        S.tripleFail = { toId, cardName };
       }
       S.comboTarget = null;
       S.combo = null;
       S.phase = PHASE.AWAIT_ACTION;
+      return S;
+    }
+
+    case "ACK_TRIPLE_FAIL": {
+      S.tripleFail = null;
       return S;
     }
 
@@ -388,7 +396,7 @@ function reducer(state, action) {
         S.phase = PHASE.AWAIT_ACTION;
         return S;
       } else {
-        // No Reboot: player explodes
+        // No Reboot: player eliminated
         S.players[pid].alive = false;
         S.turnsToTake = 0;
         S.discard.push(CARD.FATAL);
@@ -450,6 +458,7 @@ export default function Game() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
   const [flipFatal, setFlipFatal] = useState(false);
+  const [flipReboot, setFlipReboot] = useState(false);
   const [showBotModal, setShowBotModal] = useState(false);
   const botTurnStartLogIndexRef = useRef(0);
   const botIntervalRef = useRef(null);
@@ -505,20 +514,21 @@ export default function Game() {
     setShowBotModal(false);
   }, [game.turn]);
 
-  // Show Health Check modal with top 3 cards
+  // Show Health Check modal with top 3 cards and close after 3 seconds
   useEffect(() => {
     if (game.peek.length > 0) {
       setShowPeekModal(true);
       const timer = setTimeout(() => {
         setShowPeekModal(false);
         dispatch({ type: "CLEAR_PEEK" });
-      }, 5000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
     setShowPeekModal(false);
   }, [game.peek]);
 
   // Clear pending bot reinsertion if it is no longer the bot's turn
+  // Auto-close draw modal after 3 seconds
   useEffect(() => {
     const isBot = game.players[game.turn]?.isBot;
     if (!isBot) pendingReinsertRef.current = null;
@@ -528,7 +538,7 @@ export default function Game() {
   useEffect(() => {
     const isBot = game.players[game.turn]?.isBot;
     if (game.drawnCard && !isBot) {
-      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 5000);
+      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 3000);
       return () => clearTimeout(timer);
     }
   }, [game.drawnCard, game.turn, game.players]);
@@ -772,10 +782,37 @@ export default function Game() {
     setFlipFatal(false);
   }, [game.phase, hasReboot]);
 
-  const fatalCardSrc =
-    game.phase === PHASE.RESOLVE_FATAL && !hasReboot && flipFatal
-      ? STOCK_CARD_IMG
-      : CARD_IMG[CARD.FATAL];
+  // Flip between Fatal and Reboot visuals when Reboot is available
+  useEffect(() => {
+    if (game.phase === PHASE.RESOLVE_FATAL && hasReboot) {
+      const interval = setInterval(() => setFlipReboot((f) => !f), 750);
+      return () => clearInterval(interval);
+    }
+    setFlipReboot(false);
+  }, [game.phase, hasReboot]);
+
+  const fatalCardSrc = (() => {
+    if (game.phase !== PHASE.RESOLVE_FATAL) return CARD_IMG[CARD.FATAL];
+    if (hasReboot)
+      return flipReboot ? CARD_IMG[CARD.REBOOT] : CARD_IMG[CARD.FATAL];
+    return flipFatal ? STOCK_CARD_IMG : CARD_IMG[CARD.FATAL];
+  })();
+
+  const fatalTitleText = (() => {
+    if (game.phase !== PHASE.RESOLVE_FATAL) return `${CARD.FATAL}!`;
+    if (hasReboot) {
+      return flipReboot ? "Reboot Successful!" : `${CARD.FATAL}!`;
+    }
+    // No reboot available: flip text in sync with card image
+    return flipFatal ? "System Overload" : `${CARD.FATAL}!`;
+  })();
+
+  const fatalTitleStyle =
+    game.phase === PHASE.RESOLVE_FATAL
+      ? hasReboot
+        ? { color: flipReboot ? "var(--success)" : "var(--danger)" }
+        : { color: "var(--danger)" }
+      : undefined;
 
   const countAlive = game.players.filter((p) => p.alive).length;
   const canPlayNow =
@@ -798,13 +835,15 @@ export default function Game() {
       ? canPlayNow
       : game.phase === PHASE.RESOLVE_FATAL);
   const canPair =
-    selectedCard !== CARD.FATAL &&
+    selectedCard &&
     selectedCard !== CARD.REBOOT &&
+    selectedCard !== CARD.FATAL &&
     selectedCount >= 2 &&
     canPlayNow;
   const canTriple =
-    selectedCard !== CARD.FATAL &&
+    selectedCard &&
     selectedCard !== CARD.REBOOT &&
+    selectedCard !== CARD.FATAL &&
     selectedCount >= 3 &&
     canPlayNow;
 
@@ -855,7 +894,7 @@ export default function Game() {
 
   return (
     <div className="page">
-      <h1 className="page-header">System Overload</h1>
+      <h1 className="page-header">System-Overload</h1>
 
       {/* Meta pills */}
       <div className="meta">
@@ -869,60 +908,64 @@ export default function Game() {
             (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
           </span>
         </span>
-        {game.players.some((p) => p.isBot) && (() => {
-          const level = botSpeed; // 1..8
-          const maxLevel = BOT_SPEEDS.length; // 8
-          const t = (level - 1) / (maxLevel - 1); // 0..1
-          // Map 0..1 to red(0) -> green(120): lower -> higher
-          const hue = Math.round(t * 120);
-          const bg = `hsl(${hue} 80% 40%)`;
-          return (
-            <span className="pill" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontWeight: 700 }}>Bot Speed</span>
-              <button
-                className="btn btn-ghost"
-                aria-label="Slower"
-                title="Slower"
-                onClick={() => setBotSpeed((s) => Math.max(1, s - 1))}
-                disabled={botSpeed <= 1}
-                style={{ padding: "4px 8px" }}
+        {game.players.some((p) => p.isBot) &&
+          (() => {
+            const level = botSpeed; // 1..8
+            const maxLevel = BOT_SPEEDS.length; // 8
+            const t = (level - 1) / (maxLevel - 1); // 0..1
+            // Map 0..1 to red(0) -> green(120): lower -> higher
+            const hue = Math.round(t * 120);
+            const bg = `hsl(${hue} 80% 40%)`;
+            return (
+              <span
+                className="pill"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
               >
-                ◀
-              </button>
-              <div
-                role="meter"
-                aria-valuemin={1}
-                aria-valuemax={maxLevel}
-                aria-valuenow={level}
-                title={`Bot speed: level ${level} (${botTickMs}ms)`}
-                style={{
-                  width: 120,
-                  height: 24,
-                  borderRadius: 6,
-                  background: bg,
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 700,
-                  letterSpacing: 0.3,
-                }}
-              >
-                {botTickMs}ms
-              </div>
-              <button
-                className="btn btn-ghost"
-                aria-label="Faster"
-                title="Faster"
-                onClick={() => setBotSpeed((s) => Math.min(maxLevel, s + 1))}
-                disabled={botSpeed >= maxLevel}
-                style={{ padding: "4px 8px" }}
-              >
-                ▶
-              </button>
-            </span>
-          );
-        })()}
+                <span style={{ fontWeight: 700 }}>Bot Speed</span>
+                <button
+                  className="btn btn-ghost"
+                  aria-label="Slower"
+                  title="Slower"
+                  onClick={() => setBotSpeed((s) => Math.max(1, s - 1))}
+                  disabled={botSpeed <= 1}
+                  style={{ padding: "4px 8px" }}
+                >
+                  ◀
+                </button>
+                <div
+                  role="meter"
+                  aria-valuemin={1}
+                  aria-valuemax={maxLevel}
+                  aria-valuenow={level}
+                  title={`Bot speed: level ${level} (${botTickMs}ms)`}
+                  style={{
+                    width: 120,
+                    height: 24,
+                    borderRadius: 6,
+                    background: bg,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {botTickMs}ms
+                </div>
+                <button
+                  className="btn btn-ghost"
+                  aria-label="Faster"
+                  title="Faster"
+                  onClick={() => setBotSpeed((s) => Math.min(maxLevel, s + 1))}
+                  disabled={botSpeed >= maxLevel}
+                  style={{ padding: "4px 8px" }}
+                >
+                  ▶
+                </button>
+              </span>
+            );
+          })()}
       </div>
 
       {/* Pass-Device modal */}
@@ -983,10 +1026,14 @@ export default function Game() {
       </div>
 
       {/* Drawn card modal (hidden during bot turns) */}
-      <Modal show={!!game.drawnCard && !game.players[game.turn]?.isBot}>
+      <Modal
+        show={!!game.drawnCard && !game.players[game.turn]?.isBot}
+        onClose={() => dispatch({ type: "END_DRAW" })}
+        dismissOnClick
+      >
         {game.drawnCard && (
           <>
-            <div className="modal-title">You Got A {game.drawnCard}</div>
+            <div className="modal-title">Success!</div>
             <div
               className="hstack"
               style={{ justifyContent: "center", margin: "10px 0" }}
@@ -1001,19 +1048,33 @@ export default function Game() {
                 }}
               />
             </div>
-            <div className="subtle" style={{ marginBottom: 12 }}>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
               {CARD_DESC[game.drawnCard]}
             </div>
-            <Button onClick={() => dispatch({ type: "END_DRAW" })}>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
+            </div>
+            {/* <Button onClick={() => dispatch({ type: "END_DRAW" })}>
               Close
-            </Button>
+            </Button> */}
           </>
         )}
       </Modal>
 
       {/* Health Check modal (hidden during bot turns) */}
-      <Modal show={showPeekModal && !game.players[game.turn]?.isBot}>
-        <div className="section-title">Health Check (top 3)</div>
+      <Modal
+        show={showPeekModal && !game.players[game.turn]?.isBot}
+        onClose={() => {
+          setShowPeekModal(false);
+          dispatch({ type: "CLEAR_PEEK" });
+        }}
+      >
+        <div className="section-title">
+          Health Check (top 3 cards from the deck)
+        </div>
         <div className="hstack" style={{ justifyContent: "center" }}>
           {[...game.peek].reverse().map((c, i) => (
             <div key={i} className="peek-card">
@@ -1022,21 +1083,13 @@ export default function Game() {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 12 }}>
-          <Button
-            onClick={() => {
-              setShowPeekModal(false);
-              dispatch({ type: "CLEAR_PEEK" });
-            }}
-          >
-            Close
-          </Button>
-        </div>
       </Modal>
 
       {/* Fatal resolution */}
       <Modal show={game.phase === PHASE.RESOLVE_FATAL}>
-        <div className="modal-title">{CARD.FATAL}!</div>
+        <div className="modal-title" style={fatalTitleStyle}>
+          {fatalTitleText}
+        </div>
         <div
           className="hstack"
           style={{ justifyContent: "center", margin: "10px 0" }}
@@ -1083,8 +1136,8 @@ export default function Game() {
           </>
         ) : (
           <>
-            <div className="modal-title" style={{ fontSize: 40 }}>
-              No {CARD.REBOOT} available! System Overload!
+            <div className="modal-title" style={fatalTitleStyle}>
+              {CARD.REBOOT} Unavailable! System Overload!
             </div>
             <Button onClick={onResolveFatal}>Continue</Button>
           </>
@@ -1288,11 +1341,38 @@ export default function Game() {
         })()}
       </Modal>
 
+      {/* Triple failure modal */}
+      <Modal
+        show={!!game.tripleFail}
+        onClose={() => dispatch({ type: "ACK_TRIPLE_FAIL" })}
+        dismissOnClick
+      >
+        {game.tripleFail && (
+          <>
+            <div className="modal-title">Failure!</div>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
+              Request failed: {game.players[game.tripleFail.toId].name} does not
+              have {game.tripleFail.cardName}.
+            </div>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
+            </div>
+          </>
+        )}
+      </Modal>
+
       {/* Card action modal */}
-      <Modal show={selectedCard !== null}>
+      <Modal
+        show={selectedCard !== null}
+        onClose={() => setSelectedCard(null)}
+        dismissOnClick
+      >
         {selectedCard && (
           <>
-            <div className="section-title">{selectedCard}</div>
+            {/* <div className="section-title">{selectedCard}</div> */}
             <div
               className="hstack"
               style={{ justifyContent: "center", margin: "10px 0" }}
@@ -1307,22 +1387,24 @@ export default function Game() {
                 }}
               />
             </div>
-            <div className="subtle" style={{ marginBottom: 12 }}>
+            <div
+              className="section-title multiline card-desc"
+              style={{ marginBottom: 12 }}
+            >
               {CARD_DESC[selectedCard]}
             </div>
-            {COMBO_CARDS.includes(selectedCard) && selectedCount < 2 && (
-              <div className="subtle" style={{ marginBottom: 12 }}>
+            {/* {COMBO_CARDS.includes(selectedCard) && selectedCount < 2 && (
+              <div className="section-title" style={{ marginBottom: 12 }}>
                 This card must be paired to have available actions.
               </div>
-            )}
+            )} */}
             {selectedCard === CARD.REBOOT && (
-              <div className="subtle" style={{ marginBottom: 12 }}>
-                This card is only used to deactivate a Fatal Server Error when
-                drawn. It cannot be played during your turn.
+              <div className="section-title" style={{ marginBottom: 12 }}>
+                It cannot be played during your turn.
               </div>
             )}
             <div className="hstack" style={{ justifyContent: "center" }}>
-              {isActionCard && (
+              {isActionCard && selectedCard !== CARD.REBOOT && (
                 <Button
                   onClick={() => {
                     playCardByName(selectedCard);
@@ -1333,35 +1415,39 @@ export default function Game() {
                   Play
                 </Button>
               )}
-              {canPair && (
-                <Button
-                  onClick={() => {
-                    dispatch({
-                      type: "START_COMBO",
-                      cardName: selectedCard,
-                      mode: "PAIR",
-                    });
-                    setSelectedCard(null);
-                  }}
-                >
-                  Pair
-                </Button>
+              {selectedCard !== CARD.REBOOT && selectedCard !== CARD.FATAL && (
+                <>
+                  <Button
+                    onClick={() => {
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "PAIR",
+                      });
+                      setSelectedCard(null);
+                    }}
+                    disabled={!canPair}
+                  >
+                    Pair
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "TRIPLE",
+                      });
+                      setSelectedCard(null);
+                    }}
+                    disabled={!canTriple}
+                  >
+                    Triple
+                  </Button>
+                </>
               )}
-              {canTriple && (
-                <Button
-                  onClick={() => {
-                    dispatch({
-                      type: "START_COMBO",
-                      cardName: selectedCard,
-                      mode: "TRIPLE",
-                    });
-                    setSelectedCard(null);
-                  }}
-                >
-                  Triple
-                </Button>
-              )}
-              <Button onClick={() => setSelectedCard(null)}>Cancel</Button>
+            </div>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
             </div>
           </>
         )}
@@ -1375,7 +1461,7 @@ export default function Game() {
 
         <div
           className="hstack"
-          style={{ flexWrap: "wrap", columnGap: 0, rowGap: 8 }}
+          style={{ flexWrap: "wrap", columnGap: 10, rowGap: 8 }}
         >
           {groupedHand.map(({ card: c, count }, i) => {
             const canInspect =
@@ -1387,9 +1473,21 @@ export default function Game() {
                 c === CARD.SHUFFLE ||
                 c === CARD.FUTURE ||
                 c === CARD.FAVOR ||
-                (COMBO_CARDS.includes(c) && count >= 2));
+                // Allow pairing/tripling any non-Reboot/Fatal with 2+
+                (count >= 2 && c !== CARD.REBOOT && c !== CARD.FATAL));
             const needsPair =
-              canInspect && COMBO_CARDS.includes(c) && count < 2;
+              canInspect &&
+              // Non-action cards that need pairs to do anything
+              !(
+                c === CARD.SKIP ||
+                c === CARD.ATTACK ||
+                c === CARD.SHUFFLE ||
+                c === CARD.FUTURE ||
+                c === CARD.FAVOR ||
+                c === CARD.REBOOT ||
+                c === CARD.FATAL
+              ) &&
+              count < 2;
             const showInfo = needsPair || (canInspect && c === CARD.REBOOT);
 
             const isHighlighted =

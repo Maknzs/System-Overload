@@ -1,6 +1,5 @@
 // components/Card.jsx
 import "./Card.css";
-import React from "react";
 import { CARD_IMG, STOCK_CARD_IMG } from "../game/cards";
 
 export default function Card({
@@ -15,6 +14,13 @@ export default function Card({
   title,
   style,
 }) {
+  // Intrinsic dimension hints to reduce layout shift and speed decode
+  const dims =
+    size === "deck"
+      ? { width: 170, height: 230 }
+      : size === "discard"
+      ? { width: 130, height: 180 }
+      : { width: 130, height: 180 }; // default to hand size
   const imgSrc = faceDown
     ? STOCK_CARD_IMG
     : src || CARD_IMG[name] || STOCK_CARD_IMG;
@@ -32,7 +38,12 @@ export default function Card({
       aria-label={faceDown ? "Hidden card" : title || name}
       style={style}
     >
-      <img src={imgSrc} alt={faceDown ? "Hidden card" : name} />
+      <img
+        src={imgSrc}
+        alt={faceDown ? "Hidden card" : name}
+        decoding="async"
+        {...dims}
+      />
     </button>
   );
 }

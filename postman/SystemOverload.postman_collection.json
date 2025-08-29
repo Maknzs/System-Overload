@@ -1,0 +1,268 @@
+{
+  "info": {
+    "_postman_id": "7e3d9f3e-7c3b-4d73-b3f6-7f3d5a2f9b11",
+    "name": "System Overload API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Comprehensive Postman collection for System Overload backend (auth, account, health). Uses JWT Bearer auth and captures token on login."
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080/api" },
+    { "key": "email", "value": "player1@example.com" },
+    { "key": "username", "value": "player1" },
+    { "key": "password", "value": "ChangeMe123!" },
+    { "key": "jwt", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{jwt}}", "type": "string" } ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] },
+            "description": "Health check endpoint. Returns { ok: true }",
+            "auth": { "type": "noauth" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('ok:true', () => json && json.ok === true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// For the register request, auto-generate unique email/username",
+              "const rn = pm.info && pm.info.requestName ? pm.info.requestName.toLowerCase() : '';",
+              "if (rn.includes('register')) {",
+              "  const ts = Date.now();",
+              "  const base = 'player';",
+              "  const email = `${base}+${ts}@example.com`;",
+              "  const username = `${base}_${ts}`;",
+              "  pm.environment.set('email', email);",
+              "  pm.environment.set('username', username);",
+              "  if (!pm.environment.get('password')) { pm.environment.set('password', 'ChangeMe123!'); }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "auth": { "type": "noauth" },
+            "description": "Create a new account. 201 Created on success."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 or 409', () => [201,409].includes(pm.response.code));",
+                  "const json = pm.response.json();",
+                  "pm.test('ok present', () => json && typeof json.ok === 'boolean');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOrUsername\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "auth": { "type": "noauth" },
+            "description": "Login with email or username and password. Captures JWT token to {{jwt}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('ok:true', () => json && json.ok === true);",
+                  "pm.test('has token', () => typeof json.token === 'string' && json.token.length > 0);",
+                  "pm.environment.set('jwt', json.token);",
+                  "if (json.user && json.user.username) pm.environment.set('username', json.user.username);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth","me"] },
+            "description": "Get current user profile. Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('ok:true', () => json && json.ok === true);",
+                  "pm.test('has username', () => typeof json.username === 'string');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "PUT /api/account/email",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/account/email", "host": ["{{base_url}}"], "path": ["account","email"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"{{email}}\",\n  \"currentPassword\": \"{{password}}\"\n}"
+            },
+            "description": "Update email (requires current password). Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 or 409', () => [200,409].includes(pm.response.code));",
+                "const json = pm.response.json();",
+                "pm.test('ok present', () => json && typeof json.ok === 'boolean');"
+              ] }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/account/username",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/account/username", "host": ["{{base_url}}"], "path": ["account","username"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newUsername\": \"{{username}}\",\n  \"currentPassword\": \"{{password}}\"\n}"
+            },
+            "description": "Update username (requires current password). Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 or 409', () => [200,409].includes(pm.response.code));",
+                "const json = pm.response.json();",
+                "pm.test('ok present', () => json && typeof json.ok === 'boolean');"
+              ] }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/account/password",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/account/password", "host": ["{{base_url}}"], "path": ["account","password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{password}}\"\n}"
+            },
+            "description": "Change password (requires current password). Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Expect 200 or 400', () => [200,400].includes(pm.response.code));",
+                "const json = pm.response.json();",
+                "pm.test('ok present', () => json && typeof json.ok === 'boolean');"
+              ] }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/account/games-played",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/account/games-played", "host": ["{{base_url}}"], "path": ["account","games-played"] },
+            "description": "Increment gamesPlayed counter for current user. Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.code === 200);",
+                "const json = pm.response.json();",
+                "pm.test('ok:true', () => json && json.ok === true);",
+                "pm.test('has gamesPlayed', () => typeof json.gamesPlayed === 'number');"
+              ] }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /api/account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/account", "host": ["{{base_url}}"], "path": ["account"] },
+            "description": "Delete current user. Requires Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.code === 200);",
+                "const json = pm.response.json();",
+                "pm.test('ok:true', () => json && json.ok === true);"
+              ] }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -55,10 +55,12 @@
 }
 /* components/Card.css */
 :root {
-  --card-hand-w: 140px;
-  --card-hand-h: 200px;
-  --card-discard-w: 140px;
-  --card-discard-h: 200px;
+  /* Unify hand & discard to deck card sizing */
+  --card-hand-w: 130px;
+  --card-hand-h: 180px;
+  --card-discard-w: 130px;
+  --card-discard-h: 180px;
+  /* Keep deck token for larger showcase cards if needed */
   --card-deck-w: 170px;
   --card-deck-h: 230px;
   --card-radius: 14px;
@@ -77,8 +79,10 @@
 }
 .ui-card img {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: 95%; /* prevent vertical cropping */
+  max-height: 100%; /* don't exceed container height */
+  object-fit: contain; /* keep full image visible */
+  display: block; /* remove baseline gaps */
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   pointer-events: none;

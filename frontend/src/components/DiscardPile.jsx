@@ -1,4 +1,3 @@
-import React from "react";
 import "./DiscardPile.css";
 import { CARD_IMG } from "../game/cards";
 
@@ -35,7 +34,14 @@ export default function DiscardPile({ cards = [], maxToShow = 10, onClick }) {
                 title={name}
               >
                 {src ? (
-                  <img src={src} alt={name} />
+                  <img
+                    src={src}
+                    alt={name}
+                    decoding="async"
+                    loading={i >= 3 ? "lazy" : "eager"}
+                    width={130}
+                    height={180}
+                  />
                 ) : (
                   <div className="discard__placeholder">{name}</div>
                 )}

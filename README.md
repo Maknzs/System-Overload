@@ -18,6 +18,16 @@ npm install
 npm start
 ```
 
+### Run Backend Tests
+
+```bash
+cd backend
+npm install
+npm test
+```
+
+Tip: If developing on Windows + WSL, run tests from a Bash shell (inside WSL). Running `npm test` from PowerShell/CMD against `\\wsl.localhost` paths can break Jest path resolution.
+
 2. **Frontend**
 
 ```bash
@@ -26,7 +36,16 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:5173` and update `API_BASE` in `src/api.js` to `http://localhost:8080/api` for local dev.
+Visit `http://localhost:5173`.
+
+If the frontend cannot reach the API via the Vite proxy, set an explicit API base:
+
+```bash
+# in frontend/.env.development (or .env.local)
+VITE_API_BASE=http://localhost:8080/api
+```
+
+Then restart `npm run dev`.
 
 ## Docker Compose (EC2 - Production)
 
@@ -45,8 +64,21 @@ The Nginx container serves the React build and proxies `/api/*` → Express on `
 - `POST /api/auth/login` — `{ emailOrUsername, password }` → `{ token, user }`
 - `GET /api/auth/me` — (Bearer token) → `{ email, username, gamesPlayed }`
 - `PUT /api/account/email` — `{ newEmail, currentPassword }`
+- `PUT /api/account/username` — `{ newUsername, currentPassword }`
+- `PUT /api/account/password` — `{ currentPassword, newPassword }`
 - `DELETE /api/account`
 - `POST /api/account/games-played` — increments `gamesPlayed`
+
+## Postman Collection
+
+- Collection: `postman/SystemOverload.postman_collection.json`
+- Environment (local): `postman/SystemOverload.local_environment.json`
+
+Usage:
+- Import both files into Postman.
+- Ensure backend is running and `{{base_url}}` points to `http://localhost:8080/api` (or your deploy).
+- Run "POST /api/auth/register" (optional) then "POST /api/auth/login"; the test script stores `{{jwt}}` automatically.
+- Subsequent requests inherit Bearer auth via `{{jwt}}`.
 
 ## Notes
 

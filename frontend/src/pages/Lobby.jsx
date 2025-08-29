@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import Button from "../components/Button";
+import { useState } from "react";
 import "./Lobby.css";
 
 // Allows up to 5 total participants. Each row can be Human or AI Bot.
