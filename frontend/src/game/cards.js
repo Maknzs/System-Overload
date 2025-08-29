@@ -1,17 +1,18 @@
 // System Overload cards (no "Override")
-import fatal from "../assets/cards/FatalServerError.png";
-import reboot from "../assets/cards/Reboot.png";
-import skip from "../assets/cards/SecurityPatch.png";
-import attack from "../assets/cards/DDoS.png";
-import shuffleImg from "../assets/cards/SudoRandom.png";
-import future from "../assets/cards/HealthCheck.png";
-import favor from "../assets/cards/Hack.png";
-import system from "../assets/cards/SystemOverload.png";
-import log from "../assets/cards/TamperedDataLog.png";
-import newCode from "../assets/cards/NewErrorCode.png";
-import valid from "../assets/cards/ValidCredentials.png";
-import rogue from "../assets/cards/RogueSoftware.png";
-import fuel from "../assets/cards/CoffeeFueledProgrammer.png";
+import fatal from "../assets/cards/FatalServerError.webp";
+import reboot from "../assets/cards/Reboot.webp";
+import over from "../assets/cards/Override.webp";
+import skip from "../assets/cards/SecurityPatch.webp";
+import attack from "../assets/cards/DDoS.webp";
+import shuffleImg from "../assets/cards/SudoRandom.webp";
+import future from "../assets/cards/HealthCheck.webp";
+import favor from "../assets/cards/Hack.webp";
+import system from "../assets/cards/SystemOverload.webp";
+import log from "../assets/cards/TamperedDataLog.webp";
+import newCode from "../assets/cards/NewErrorCode.webp";
+import valid from "../assets/cards/ValidCredentials.webp";
+import rogue from "../assets/cards/RogueSoftware.webp";
+import fuel from "../assets/cards/CoffeeFueledProgrammer.webp";
 
 export const STOCK_CARD_IMG = system;
 

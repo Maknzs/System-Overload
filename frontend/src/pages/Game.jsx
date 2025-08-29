@@ -1025,7 +1025,7 @@ export default function Game() {
 
         <div
           className="hstack"
-          style={{ flexWrap: "wrap", columnGap: 0, rowGap: 8 }}
+          style={{ flexWrap: "wrap", columnGap: 10, rowGap: 8 }}
         >
           {groupedHand.map(({ card: c, count }, i) => {
             const canInspect =
