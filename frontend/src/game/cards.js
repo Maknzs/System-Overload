@@ -59,7 +59,7 @@ export function createDeck(playerCount) {
 
   // Deal 4 cards to each player
   const hands = Array.from({ length: playerCount }, () => []);
-  for (let r = 0; r < 7; r++) {
+  for (let r = 0; r < 4; r++) {
     for (let p = 0; p < playerCount; p++) {
       hands[p].push(deck.pop());
     }
@@ -104,23 +104,27 @@ export const CARD_IMG = {
 
 // Descriptive text for each card's effect
 export const CARD_DESC = {
-  [CARD.FATAL]: "If drawn without a Reboot, you are knocked out of the game.",
+  [CARD.FATAL]: "If drawn without a Reboot, you are knocked out of the game",
   [CARD.REBOOT]:
-    "Deactivate a Fatal Server Error when it is drawn and place it back in the deck.",
-  [CARD.SKIP]: "End your turn immediately without drawing a card.",
+    "Deactivate a Fatal Server Error when it is drawn and place it back in the deck",
+  [CARD.SKIP]:
+    "Play: End your turn immediately without drawing a card\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.ATTACK]:
-    "End your turn without drawing and force the next player to take two turns.",
-  [CARD.SHUFFLE]: "Shuffle the deck.",
-  [CARD.FUTURE]: "Look at the top three cards of the deck.",
-  [CARD.FAVOR]: "Request a random card from another player.",
+    "Play: End your turn without drawing and force the next player to take two turns\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
+  [CARD.SHUFFLE]:
+    "Play: Shuffle the deck\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
+  [CARD.FUTURE]:
+    "Play: Look at the top three cards of the deck for 3 sec\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
+  [CARD.FAVOR]:
+    "Play: Request a random card from another player\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.TAMPERED]:
-    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
+    "Single: Useless\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.NEW_ERROR]:
-    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
+    "Single: Useless\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.VALID_CREDS]:
-    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
+    "Single: Useless\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.ROGUE_AV]:
-    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
+    "Single: Useless\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
   [CARD.COFFEE]:
-    "Single: Useless\nPair: Choose a player to steal a random card from.\nTriple: Choose a player & card, if they have it, you get it.",
+    "Single: Useless\nPair: Choose a player to steal a random card from\nTriple: Choose a player & card, if they have it, you get it",
 };

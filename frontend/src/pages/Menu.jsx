@@ -2,8 +2,60 @@ import { useState, useRef } from "react";
 import { api } from "../api";
 import "./Menu.css";
 
+// Map API errors to clear, user-friendly messages
+function humanizeAccountError(kind, err) {
+  const code = err && (err.code || (err.body && err.body.error && err.body.error.code));
+  const status = err && err.status;
+  const raw = (err && err.message) || "";
+  const lower = raw.toLowerCase();
+
+  // Prefer backend error codes when available
+  switch (code) {
+    case "BAD_CREDENTIALS":
+      return "Incorrect password. Please try again.";
+    case "EMAIL_IN_USE":
+      return "That email is already in use.";
+    case "USERNAME_IN_USE":
+      return "That username is already taken.";
+    case "SAME_PASSWORD":
+      return "New password must be different from the current password.";
+    case "VALIDATION_ERROR":
+      if (kind === "email") return "Please enter a valid email address.";
+      if (kind === "username") return "Username must be at least 3 characters.";
+      if (kind === "password") return "Password must be at least 8 characters.";
+      break;
+    case "NOT_FOUND":
+      return "Account not found.";
+    case "SERVER_ERROR":
+      return "Something went wrong on our end. Please try again.";
+    default:
+      break;
+  }
+
+  // Fallbacks based on common substrings in error messages
+  if (lower.includes("invalid password")) return "Incorrect password. Please try again.";
+  if (lower.includes("already in use")) {
+    return kind === "email" ? "That email is already in use." : "That username is already taken.";
+  }
+  if (lower.includes("must be different")) return "New password must be different from the current password.";
+  if (lower.includes("isemail") || lower.includes("invalid email")) return "Please enter a valid email address.";
+  if (lower.includes("min") || lower.includes("length")) {
+    if (kind === "username") return "Username must be at least 3 characters.";
+    if (kind === "password") return "Password must be at least 8 characters.";
+  }
+  if (status === 429) return "Too many attempts. Please wait and try again.";
+  if (status && status >= 500) return "Server error. Please try again later.";
+  if (lower.includes("failed to fetch") || lower.includes("network")) return "Network error. Check your connection and try again.";
+
+  return `Failed to update ${kind}`;
+}
+
 export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
-  const [loading, setLoading] = useState({ email: false, username: false, password: false });
+  const [loading, setLoading] = useState({
+    email: false,
+    username: false,
+    password: false,
+  });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -58,9 +110,11 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       setEmailPw("");
       // Show success immediately; refresh user info in background
       setStatus("Changes saved");
-      try { await refreshUser(); } catch {}
+      try {
+        await refreshUser();
+      } catch {}
     } catch (e) {
-      setStatus(e.message || "Failed to update email", true);
+      setStatus(humanizeAccountError("email", e), true);
     } finally {
       setLoading((s) => ({ ...s, email: false }));
     }
@@ -75,9 +129,11 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       setUserPw("");
       // Show success immediately; refresh user info in background
       setStatus("Changes saved");
-      try { await refreshUser(); } catch {}
+      try {
+        await refreshUser();
+      } catch {}
     } catch (e) {
-      setStatus(e.message || "Failed to update username", true);
+      setStatus(humanizeAccountError("username", e), true);
     } finally {
       setLoading((s) => ({ ...s, username: false }));
     }
@@ -97,7 +153,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       setNewPw2("");
       setStatus("Changes saved");
     } catch (e) {
-      setStatus(e.message || "Failed to update password", true);
+      setStatus(humanizeAccountError("password", e), true);
     } finally {
       setLoading((s) => ({ ...s, password: false }));
     }
@@ -109,13 +165,13 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
         <span className="badge">Local</span>
       </div>
 
-      {!anyOpen && (
+      {
         <div className="card user-card" style={{ marginBottom: 16 }}>
           <div>Username: {user?.username}</div>
           <div>Email: {user?.email}</div>
           <div>Games played: {user?.gamesPlayed ?? 0}</div>
         </div>
-      )}
+      }
 
       <div className="actions" style={{ marginBottom: 16 }}>
         <button className="btn btn-accent" onClick={onStart}>
@@ -128,21 +184,34 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="section-title">Account Settings</div>
-        {msg && <div className="pill" style={{ color: "#16a34a" }}>{msg}</div>}
-        {err && <div className="pill" style={{ color: "#ef4444" }}>{err}</div>}
+        {msg && (
+          <div className="pill" style={{ color: "#16a34a" }}>
+            {msg}
+          </div>
+        )}
+        {err && (
+          <div className="pill" style={{ color: "#ef4444" }}>
+            {err}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
           {/* Email section */}
           <div className="card" style={{ padding: 12 }}>
             <div className="hstack" style={{ justifyContent: "space-between" }}>
-              <div className="section-title" style={{ fontSize: 18 }}>Email</div>
+              <div className="section-title" style={{ fontSize: 18 }}>
+                Email
+              </div>
               <button
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => {
                   setShowEmail((v) => {
                     const nv = !v;
-                    if (!nv) { setNewEmail(""); setEmailPw(""); }
+                    if (!nv) {
+                      setNewEmail("");
+                      setEmailPw("");
+                    }
                     return nv;
                   });
                 }}
@@ -160,7 +229,13 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   value={user?.username || user?.email || ""}
                   readOnly
                   aria-hidden="true"
-                  style={{ position: "absolute", left: -9999, width: 0, height: 0, opacity: 0 }}
+                  style={{
+                    position: "absolute",
+                    left: -9999,
+                    width: 0,
+                    height: 0,
+                    opacity: 0,
+                  }}
                 />
                 <div className="hstack" style={{ gap: 8, marginTop: 8 }}>
                   <input
@@ -195,14 +270,19 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
           {/* Username section */}
           <div className="card" style={{ padding: 12 }}>
             <div className="hstack" style={{ justifyContent: "space-between" }}>
-              <div className="section-title" style={{ fontSize: 18 }}>Username</div>
+              <div className="section-title" style={{ fontSize: 18 }}>
+                Username
+              </div>
               <button
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => {
                   setShowUsername((v) => {
                     const nv = !v;
-                    if (!nv) { setNewUsername(""); setUserPw(""); }
+                    if (!nv) {
+                      setNewUsername("");
+                      setUserPw("");
+                    }
                     return nv;
                   });
                 }}
@@ -220,7 +300,13 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   value={user?.username || user?.email || ""}
                   readOnly
                   aria-hidden="true"
-                  style={{ position: "absolute", left: -9999, width: 0, height: 0, opacity: 0 }}
+                  style={{
+                    position: "absolute",
+                    left: -9999,
+                    width: 0,
+                    height: 0,
+                    opacity: 0,
+                  }}
                 />
                 <div className="hstack" style={{ gap: 8, marginTop: 8 }}>
                   <input
@@ -255,14 +341,20 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
           {/* Password section */}
           <div className="card" style={{ padding: 12 }}>
             <div className="hstack" style={{ justifyContent: "space-between" }}>
-              <div className="section-title" style={{ fontSize: 18 }}>Password</div>
+              <div className="section-title" style={{ fontSize: 18 }}>
+                Password
+              </div>
               <button
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => {
                   setShowPassword((v) => {
                     const nv = !v;
-                    if (!nv) { setCurrPw(""); setNewPw(""); setNewPw2(""); }
+                    if (!nv) {
+                      setCurrPw("");
+                      setNewPw("");
+                      setNewPw2("");
+                    }
                     return nv;
                   });
                 }}
@@ -280,9 +372,18 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   value={user?.username || user?.email || ""}
                   readOnly
                   aria-hidden="true"
-                  style={{ position: "absolute", left: -9999, width: 0, height: 0, opacity: 0 }}
+                  style={{
+                    position: "absolute",
+                    left: -9999,
+                    width: 0,
+                    height: 0,
+                    opacity: 0,
+                  }}
                 />
-                <div className="hstack" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <div
+                  className="hstack"
+                  style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}
+                >
                   <input
                     className="input"
                     type="password"

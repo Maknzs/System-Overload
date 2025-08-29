@@ -466,23 +466,23 @@ export default function Game() {
     setHideHand(true);
   }, [game.turn]);
 
-  // Show Health Check modal with top 3 cards
+  // Show Health Check modal with top 3 cards and close after 3 seconds
   useEffect(() => {
     if (game.peek.length > 0) {
       setShowPeekModal(true);
       const timer = setTimeout(() => {
         setShowPeekModal(false);
         dispatch({ type: "CLEAR_PEEK" });
-      }, 5000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
     setShowPeekModal(false);
   }, [game.peek]);
 
-  // Auto-close draw modal after 5 seconds
+  // Auto-close draw modal after 3 seconds
   useEffect(() => {
     if (game.drawnCard) {
-      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 5000);
+      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 3000);
       return () => clearTimeout(timer);
     }
   }, [game.drawnCard]);
@@ -525,14 +525,20 @@ export default function Game() {
     return flipFatal ? STOCK_CARD_IMG : CARD_IMG[CARD.FATAL];
   })();
 
-  const fatalTitleText =
-    game.phase === PHASE.RESOLVE_FATAL && hasReboot && flipReboot
-      ? "Reboot Successful!"
-      : `${CARD.FATAL}!`;
+  const fatalTitleText = (() => {
+    if (game.phase !== PHASE.RESOLVE_FATAL) return `${CARD.FATAL}!`;
+    if (hasReboot) {
+      return flipReboot ? "Reboot Successful!" : `${CARD.FATAL}!`;
+    }
+    // No reboot available: flip text in sync with card image
+    return flipFatal ? "System Overload" : `${CARD.FATAL}!`;
+  })();
 
   const fatalTitleStyle =
-    game.phase === PHASE.RESOLVE_FATAL && hasReboot
-      ? { color: flipReboot ? "var(--success)" : "var(--danger)" }
+    game.phase === PHASE.RESOLVE_FATAL
+      ? hasReboot
+        ? { color: flipReboot ? "var(--success)" : "var(--danger)" }
+        : { color: "var(--danger)" }
       : undefined;
 
   const countAlive = game.players.filter((p) => p.alive).length;
@@ -556,9 +562,17 @@ export default function Game() {
       ? canPlayNow
       : game.phase === PHASE.RESOLVE_FATAL);
   const canPair =
-    COMBO_CARDS.includes(selectedCard) && selectedCount >= 2 && canPlayNow;
+    selectedCard &&
+    selectedCard !== CARD.REBOOT &&
+    selectedCard !== CARD.FATAL &&
+    selectedCount >= 2 &&
+    canPlayNow;
   const canTriple =
-    COMBO_CARDS.includes(selectedCard) && selectedCount >= 3 && canPlayNow;
+    selectedCard &&
+    selectedCard !== CARD.REBOOT &&
+    selectedCard !== CARD.FATAL &&
+    selectedCount >= 3 &&
+    canPlayNow;
 
   function playCardByName(cardName) {
     if (!me?.alive) return;
@@ -707,7 +721,6 @@ export default function Game() {
           setShowPeekModal(false);
           dispatch({ type: "CLEAR_PEEK" });
         }}
-        dismissOnClick
       >
         <div className="section-title">
           Health Check (top 3 cards from the deck)
@@ -719,9 +732,6 @@ export default function Game() {
               <div className="peek-order">{i + 1}</div>
             </div>
           ))}
-        </div>
-        <div className="subtle" style={{ marginTop: 12 }}>
-          Click anywhere to exit
         </div>
       </Modal>
 
@@ -770,8 +780,8 @@ export default function Game() {
           </>
         ) : (
           <>
-            <div className="modal-title" style={{ fontSize: 40 }}>
-              No {CARD.REBOOT} available! System Overload!
+            <div className="modal-title" style={fatalTitleStyle}>
+              {CARD.REBOOT} Unavailable! System Overload!
             </div>
             <Button onClick={onResolveFatal}>Continue</Button>
           </>
@@ -957,52 +967,52 @@ export default function Game() {
                 It cannot be played during your turn.
               </div>
             )}
-              <div className="hstack" style={{ justifyContent: "center" }}>
-                {isActionCard && selectedCard !== CARD.REBOOT && (
+            <div className="hstack" style={{ justifyContent: "center" }}>
+              {isActionCard && selectedCard !== CARD.REBOOT && (
+                <Button
+                  onClick={() => {
+                    playCardByName(selectedCard);
+                    setSelectedCard(null);
+                  }}
+                  disabled={!canPlaySelected}
+                >
+                  Play
+                </Button>
+              )}
+              {selectedCard !== CARD.REBOOT && selectedCard !== CARD.FATAL && (
+                <>
                   <Button
                     onClick={() => {
-                      playCardByName(selectedCard);
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "PAIR",
+                      });
                       setSelectedCard(null);
                     }}
-                    disabled={!canPlaySelected}
+                    disabled={!canPair}
                   >
-                    Play
+                    Pair
                   </Button>
-                )}
-                {COMBO_CARDS.includes(selectedCard) && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        dispatch({
-                          type: "START_COMBO",
-                          cardName: selectedCard,
-                          mode: "PAIR",
-                        });
-                        setSelectedCard(null);
-                      }}
-                      disabled={!canPair}
-                    >
-                      Pair
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        dispatch({
-                          type: "START_COMBO",
-                          cardName: selectedCard,
-                          mode: "TRIPLE",
-                        });
-                        setSelectedCard(null);
-                      }}
-                      disabled={!canTriple}
-                    >
-                      Triple
-                    </Button>
-                  </>
-                )}
-              </div>
-              <div className="subtle" style={{ marginTop: 12 }}>
-                Click anywhere to exit
-              </div>
+                  <Button
+                    onClick={() => {
+                      dispatch({
+                        type: "START_COMBO",
+                        cardName: selectedCard,
+                        mode: "TRIPLE",
+                      });
+                      setSelectedCard(null);
+                    }}
+                    disabled={!canTriple}
+                  >
+                    Triple
+                  </Button>
+                </>
+              )}
+            </div>
+            <div className="subtle" style={{ marginTop: 12 }}>
+              Click anywhere to exit
+            </div>
           </>
         )}
       </Modal>
@@ -1027,9 +1037,21 @@ export default function Game() {
                 c === CARD.SHUFFLE ||
                 c === CARD.FUTURE ||
                 c === CARD.FAVOR ||
-                (COMBO_CARDS.includes(c) && count >= 2));
+                // Allow pairing/tripling any non-Reboot/Fatal with 2+
+                (count >= 2 && c !== CARD.REBOOT && c !== CARD.FATAL));
             const needsPair =
-              canInspect && COMBO_CARDS.includes(c) && count < 2;
+              canInspect &&
+              // Non-action cards that need pairs to do anything
+              !(
+                c === CARD.SKIP ||
+                c === CARD.ATTACK ||
+                c === CARD.SHUFFLE ||
+                c === CARD.FUTURE ||
+                c === CARD.FAVOR ||
+                c === CARD.REBOOT ||
+                c === CARD.FATAL
+              ) &&
+              count < 2;
             const showInfo = needsPair || (canInspect && c === CARD.REBOOT);
 
             if (count === 1) {

@@ -33,7 +33,20 @@ export async function api(path, { method = "GET", body, headers } = {}) {
     const snippet = typeof data.message === "string" ? data.message.slice(0, 200) : "";
     const baseMsg = (data.error && data.error.message) || (typeof data.message === "string" ? snippet : null) || `HTTP ${res.status}`;
     const hint = ct && !ct.includes("application/json") ? ` (non-JSON response: ${ct})` : "";
-    throw new Error(`${baseMsg}${hint} (${method} ${url})`);
+    const err = new Error(`${baseMsg}${hint} (${method} ${url})`);
+    // Attach additional metadata for consumers to present better UX
+    try {
+      err.status = res.status;
+      err.code = data && data.error && data.error.code ? data.error.code : undefined;
+      err.method = method;
+      err.url = url;
+      err.contentType = ct;
+      err.body = data;
+      err.name = 'ApiError';
+    } catch (_) {
+      // Non-fatal if attaching metadata fails
+    }
+    throw err;
   }
   return data;
 }

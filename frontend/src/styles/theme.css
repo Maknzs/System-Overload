@@ -9,8 +9,8 @@
   --primary: #4f46e5; /* indigo-600 */
   --primary-700: #4338ca;
   --accent: #f97316; /* orange-500 */
-  --success: #0c8f3e; /* emerald-500 */
-  --danger: #ef4444; /* red-500 */
+  --success: green; /* emerald-500 */
+  --danger: red; /* red-500 */
   --warning: #f59e0b; /* amber-500 */
 
   --radius: 14px;
