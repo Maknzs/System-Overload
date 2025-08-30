@@ -167,10 +167,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   }
   return (
     <div className="page menu-page">
-      <div className="menu-header">
-        <h1 className="page-header">System-Overload</h1>
-        <span className="badge">Local</span>
-      </div>
+      <h1 className="page-header">Profile</h1>
 
       {
         <div className="card user-card" style={{ marginBottom: 16 }}>
@@ -190,7 +187,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="section-title">Account Settings</div>
+        <div className="section-title">Settings</div>
         {msg && (
           <div className="pill" style={{ color: "#16a34a" }}>
             {msg}

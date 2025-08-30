@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Lobby.css";
 
 // Allows up to 5 total participants. Each row can be Human or AI Bot.
-export default function Lobby({ onStart, onBack }) {
+export default function Lobby({ onStart, onBack, authed }) {
   const [players, setPlayers] = useState([
     { name: "", isBot: false },
     { name: "", isBot: false },
   ]);
+  const nav = useNavigate();
 
   const addPlayer = (isBot = false) =>
     players.length < 5 && setPlayers([...players, { name: "", isBot }]);
@@ -47,7 +49,7 @@ export default function Lobby({ onStart, onBack }) {
       <h1 className="page-header">Lobby</h1>
 
       <div className="card">
-        <div className="section-title">Players</div>
+        <div className="section-title">Enter Player Names</div>
         <div className="lobby-grid">
           {players.map((p, i) => (
             <div className="player-row" key={i}>
@@ -75,6 +77,13 @@ export default function Lobby({ onStart, onBack }) {
         </div>
         <div className="lobby-actions">
           <button
+            className="btn btn-accent"
+            onClick={start}
+            disabled={players.filter((p) => (p.name || "").trim()).length < 2}
+          >
+            Start Game
+          </button>
+          <button
             className="btn btn-ghost"
             onClick={() => addPlayer(true)}
             disabled={players.length >= 5}
@@ -82,13 +91,10 @@ export default function Lobby({ onStart, onBack }) {
             Add Bot
           </button>
           <button
-            className="btn btn-accent"
-            onClick={start}
+            className="btn btn-ghost"
+            onClick={() => (authed ? onBack() : nav("/login"))}
           >
-            Start Game
-          </button>
-          <button className="btn" onClick={onBack}>
-            Back
+            {authed ? "View Profile" : "Login / Register"}
           </button>
         </div>
       </div>

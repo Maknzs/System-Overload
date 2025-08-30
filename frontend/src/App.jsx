@@ -12,7 +12,6 @@ export default function App() {
   const nav = useNavigate();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
-  const [guest, setGuest] = useState(false);
   const authed = Boolean(token);
 
   // keep api helper aware of token, if your helper needs it
@@ -88,18 +87,10 @@ export default function App() {
     (t, u) => {
       setToken(t);
       setUser(u);
-      setGuest(false);
-      nav("/"); // go to menu
+      nav("/"); // land in lobby (root) after login
     },
     [nav]
   );
-
-  const handleGuest = useCallback(() => {
-    setGuest(true);
-    setToken("");
-    setUser(null);
-    nav("/lobby");
-  }, [nav]);
 
   const handleLogout = useCallback(() => {
     setToken("");
@@ -139,14 +130,30 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Root is the Lobby (public) */}
       <Route
         path="/"
+        element={
+          <Lobby
+            authed={authed}
+            onStart={(players) => {
+              // Preserve isBot flags and names so Game can identify bots
+              nav("/game", { state: { players } });
+            }}
+            onBack={() => nav("/profile")}
+          />
+        }
+      />
+
+      {/* Profile (formerly at "/"): protected */}
+      <Route
+        path="/profile"
         element={
           authed ? (
             user ? (
               <Menu
                 user={user}
-                onStart={() => nav("/lobby")}
+                onStart={() => nav("/")}
                 onLogout={handleLogout}
                 onUserUpdate={setUser}
               />
@@ -158,25 +165,11 @@ export default function App() {
           )
         }
       />
-      <Route
-        path="/lobby"
-        element={
-          authed || guest ? (
-            <Lobby
-              onStart={(players) => {
-                // Preserve isBot flags and names so Game can identify bots
-                nav("/game", { state: { players } });
-              }}
-              onBack={() => nav("/")}
-            />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      {/* Back-compat: send old /lobby to root */}
+      <Route path="/lobby" element={<Navigate to="/" replace />} />
       <Route
         path="/game"
-        element={authed || guest ? <Game /> : <Navigate to="/login" replace />}
+        element={<Game />}
       />
       <Route
         path="/login"
@@ -187,7 +180,7 @@ export default function App() {
             <Login
               onLogin={handleLogin}
               goRegister={() => nav("/register")}
-              goGuest={handleGuest}
+              goBack={() => nav("/")}
             />
           )
         }
@@ -200,7 +193,7 @@ export default function App() {
           ) : (
             <Register
               goLogin={() => nav("/login")}
-              onRegistered={() => nav("/login")}
+              onRegistered={() => nav("/")}
             />
           )
         }

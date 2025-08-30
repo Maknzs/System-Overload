@@ -12,10 +12,9 @@ describe('Login page', () => {
   it('submits and calls onLogin on success', async () => {
     const onLogin = vi.fn();
     const goRegister = vi.fn();
-    const goGuest = vi.fn();
     api.mockResolvedValue({ token: 't123', user: { username: 'alice', email: 'a@example.com' } });
 
-    render(<Login onLogin={onLogin} goRegister={goRegister} goGuest={goGuest} />);
+    render(<Login onLogin={onLogin} goRegister={goRegister} />);
 
     await userEvent.type(screen.getByPlaceholderText(/email or username/i), 'alice');
     await userEvent.type(screen.getByPlaceholderText(/password/i), 'Password1!');
@@ -31,7 +30,7 @@ describe('Login page', () => {
   it('shows error on failure', async () => {
     const onLogin = vi.fn();
     api.mockRejectedValue(new Error('Invalid credentials'));
-    render(<Login onLogin={onLogin} goRegister={() => {}} goGuest={() => {}} />);
+    render(<Login onLogin={onLogin} goRegister={() => {}} />);
     await userEvent.type(screen.getByPlaceholderText(/email or username/i), 'alice');
     await userEvent.type(screen.getByPlaceholderText(/password/i), 'bad');
     await userEvent.click(screen.getByRole('button', { name: /login/i }));
@@ -39,14 +38,17 @@ describe('Login page', () => {
     expect(onLogin).not.toHaveBeenCalled();
   });
 
-  it('navigates via Register and Guest buttons', async () => {
+  it('navigates via Register button', async () => {
     const goRegister = vi.fn();
-    const goGuest = vi.fn();
-    render(<Login onLogin={() => {}} goRegister={goRegister} goGuest={goGuest} />);
+    render(<Login onLogin={() => {}} goRegister={goRegister} goBack={() => {}} />);
     await userEvent.click(screen.getByRole('button', { name: /register/i }));
-    await userEvent.click(screen.getByRole('button', { name: /continue as guest/i }));
     expect(goRegister).toHaveBeenCalled();
-    expect(goGuest).toHaveBeenCalled();
+  });
+
+  it('Back to Lobby button calls goBack', async () => {
+    const goBack = vi.fn();
+    render(<Login onLogin={() => {}} goRegister={() => {}} goBack={goBack} />);
+    await userEvent.click(screen.getByRole('button', { name: /back to lobby/i }));
+    expect(goBack).toHaveBeenCalled();
   });
 });
-

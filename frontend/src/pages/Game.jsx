@@ -898,6 +898,7 @@ export default function Game() {
 
       {/* Meta pills */}
       <div className="meta">
+        <span className="badge">Local</span>
         <span className="pill">
           Players alive: {countAlive} / {game.players.length}
         </span>

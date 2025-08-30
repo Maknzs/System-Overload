@@ -11,7 +11,7 @@ vi.mock('../../api', () => ({ api: vi.fn() }));
 describe('Accessibility checks', () => {
   it('Login has no obvious a11y violations', async () => {
     const { container } = render(
-      <Login onLogin={() => {}} goRegister={() => {}} goGuest={() => {}} />
+      <Login onLogin={() => {}} goRegister={() => {}} />
     );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
