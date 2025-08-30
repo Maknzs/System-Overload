@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Lobby.css";
 
-export default function Lobby({ onStart, onBack }) {
+export default function Lobby({ onStart, onBack, authed }) {
   const [names, setNames] = useState(["", ""]);
+  const nav = useNavigate();
 
   const addPlayer = () => names.length < 5 && setNames([...names, ""]);
   const removePlayer = (i) =>
@@ -23,10 +25,10 @@ export default function Lobby({ onStart, onBack }) {
 
   return (
     <div className="page">
-      <h1 className="page-header">Lobby</h1>
+      <h1 className="page-header">System-Overload</h1>
 
       <div className="card">
-        <div className="section-title">Players</div>
+        <div className="section-title">Enter Player Names</div>
         <div className="lobby-grid">
           {names.map((n, i) => (
             <div className="player-row" key={i}>
@@ -49,6 +51,13 @@ export default function Lobby({ onStart, onBack }) {
         </div>
         <div className="lobby-actions">
           <button
+            className="btn btn-accent"
+            onClick={start}
+            disabled={names.filter((x) => x.trim()).length < 2}
+          >
+            Start Game
+          </button>
+          <button
             className="btn btn-ghost"
             onClick={addPlayer}
             disabled={names.length >= 5}
@@ -56,14 +65,10 @@ export default function Lobby({ onStart, onBack }) {
             Add Player
           </button>
           <button
-            className="btn btn-accent"
-            onClick={start}
-            disabled={names.filter((x) => x.trim()).length < 2}
+            className="btn btn-ghost"
+            onClick={() => (authed ? onBack() : nav("/login"))}
           >
-            Start Game
-          </button>
-          <button className="btn" onClick={onBack}>
-            Back
+            {authed ? "View Profile" : "Login / Register"}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import "./Login.css";
 
-export default function Login({ onLogin, goRegister, goGuest }) {
+export default function Login({ onLogin, goRegister, goBack }) {
   const [emailOrUsername, setId] = useState("");
   const [password, setPw] = useState("");
   const [err, setErr] = useState(null);
@@ -56,8 +56,8 @@ export default function Login({ onLogin, goRegister, goGuest }) {
           <button className="btn btn-ghost" type="button" onClick={goRegister}>
             Register
           </button>
-          <button className="btn btn-ghost" type="button" onClick={goGuest}>
-            Continue as Guest
+          <button className="btn btn-ghost" type="button" onClick={goBack}>
+            Back to Lobby
           </button>
         </div>
       </form>

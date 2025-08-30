@@ -22,17 +22,25 @@ describe('App routing and token persistence', () => {
     localStorage.clear();
   });
 
-  it('protects the menu route when no token is present', async () => {
+  it('root redirects to Lobby when unauthenticated', async () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
       </MemoryRouter>
     );
-    // Redirects to Login
-    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /lobby/i })).toBeInTheDocument();
   });
 
-  it('login stores token, navigates to menu; logout clears token and returns to login', async () => {
+  it('legacy /lobby path redirects to root Lobby', async () => {
+    render(
+      <MemoryRouter initialEntries={["/lobby"]}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(await screen.findByRole('heading', { name: /lobby/i })).toBeInTheDocument();
+  });
+
+  it('login stores token, navigates to lobby; can view profile and logout', async () => {
     // Arrange API mock for login and subsequent /auth/me fetch
     api.mockImplementation(async (path, opts = {}) => {
       if (path === '/auth/login' && opts.method === 'POST') {
@@ -60,11 +68,12 @@ describe('App routing and token persistence', () => {
     await userEvent.type(screen.getByPlaceholderText(/password/i), 'Password1!');
     await userEvent.click(screen.getByRole('button', { name: /login/i }));
 
-    // Navigates to menu and persists token
-    await screen.findByText(/system overload/i);
+    // Navigates to lobby and persists token
+    await screen.findByRole('heading', { name: /lobby/i });
     expect(localStorage.getItem('token')).toBe('t123');
 
-    // Logout
+    // Go to profile then logout
+    await userEvent.click(screen.getByRole('button', { name: /view profile/i }));
     await userEvent.click(screen.getByRole('button', { name: /logout/i }));
     await waitFor(() =>
       expect(

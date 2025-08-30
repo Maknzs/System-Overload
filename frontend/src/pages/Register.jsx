@@ -30,7 +30,7 @@ export default function Register({ goLogin, onRegistered }) {
 
   return (
     <div className="page">
-      <h1 className="page-header">Create Account</h1>
+      <h1 className="page-header">Register</h1>
       <form className="card auth-box" onSubmit={submit}>
         <input
           className="input"
