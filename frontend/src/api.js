@@ -63,3 +63,6 @@ api.updateUsername = ({ newUsername, currentPassword }) =>
 
 api.updatePassword = ({ currentPassword, newPassword }) =>
   api("/account/password", { method: "PUT", body: { currentPassword, newPassword } });
+
+// Delete account
+api.deleteAccount = () => api("/account", { method: "DELETE" });

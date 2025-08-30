@@ -93,5 +93,16 @@ describe('api()', () => {
     expect(url).toBe(`${BASE}/account/games-played`);
     expect(opts.method).toBe('POST');
   });
-});
 
+  it('helper: deleteAccount sends DELETE to /account', async () => {
+    const { api: defaultExport } = await vi.importActual('./api');
+    const spy = vi.spyOn(global, 'fetch').mockResolvedValue(
+      makeResponse({ status: 200, body: { ok: true }, headers: { 'content-type': 'application/json' } })
+    );
+    await defaultExport.deleteAccount();
+    const [url, opts] = spy.mock.calls[0];
+    expect(url).toBe(`${BASE}/account`);
+    expect(opts.method).toBe('DELETE');
+    expect(opts.body).toBeUndefined();
+  });
+});
