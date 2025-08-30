@@ -62,6 +62,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
     email: false,
     username: false,
     password: false,
+    deleting: false,
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -70,6 +71,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   const [showEmail, setShowEmail] = useState(false);
   const [showUsername, setShowUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   // Email form state
   const [newEmail, setNewEmail] = useState("");
@@ -83,7 +85,8 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   const [currPw, setCurrPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newPw2, setNewPw2] = useState("");
-  const anyOpen = showEmail || showUsername || showPassword;
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const anyOpen = showEmail || showUsername || showPassword || showDelete;
 
   async function refreshUser() {
     try {
@@ -163,6 +166,24 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
       setStatus(humanizeAccountError("password", e), true);
     } finally {
       setLoading((s) => ({ ...s, password: false }));
+    }
+  }
+
+  async function submitDelete(e) {
+    e.preventDefault();
+    if (deleteConfirm !== "DELETE") {
+      setStatus('Type DELETE to confirm', true);
+      return;
+    }
+    setLoading((s) => ({ ...s, deleting: true }));
+    try {
+      await api.deleteAccount();
+      // Proactively log the user out and redirect to login
+      onLogout?.();
+    } catch (e) {
+      setStatus('Failed to delete account. Please try again.', true);
+    } finally {
+      setLoading((s) => ({ ...s, deleting: false }));
     }
   }
   return (
@@ -417,6 +438,51 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
                   />
                   <button className="btn" disabled={loading.password}>
                     {loading.password ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Delete Account section */}
+          <div className="card" style={{ padding: 12 }}>
+            <div className="hstack" style={{ justifyContent: "space-between" }}>
+              <div className="section-title" style={{ fontSize: 18 }}>
+                Delete Account
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowDelete((v) => {
+                    const nv = !v;
+                    if (!nv) setDeleteConfirm("");
+                    return nv;
+                  });
+                }}
+              >
+                {showDelete ? "Cancel" : "Delete Account"}
+              </button>
+            </div>
+            {showDelete && (
+              <form onSubmit={submitDelete}>
+                <div style={{ color: '#b91c1c', marginTop: 8 }}>
+                  This action is permanent and cannot be undone.
+                </div>
+                <div className="hstack" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="Type DELETE to confirm"
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                  />
+                  <button
+                    className="btn"
+                    disabled={loading.deleting || deleteConfirm !== 'DELETE'}
+                    style={{ background: '#ef4444', color: 'white' }}
+                  >
+                    {loading.deleting ? 'Deleting…' : 'Delete'}
                   </button>
                 </div>
               </form>
