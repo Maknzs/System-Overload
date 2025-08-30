@@ -1224,7 +1224,12 @@ export default function Game() {
                 }
                 style={
                   botHighlight?.type === "pair_card" && botHighlight.index === i
-                    ? { outline: "4px solid var(--accent)" }
+                    ? {
+                        outline: "4px solid var(--accent)",
+                        borderRadius: 12,
+                        padding: 2,
+                        display: "inline-block",
+                      }
                     : undefined
                 }
               />
@@ -1283,7 +1288,12 @@ export default function Game() {
               style={
                 botHighlight?.type === "triple_card" &&
                 botHighlight.cardName === n
-                  ? { outline: "4px solid var(--accent)" }
+                  ? {
+                      outline: "4px solid var(--accent)",
+                      borderRadius: 12,
+                      padding: 2,
+                      display: "inline-block",
+                    }
                   : undefined
               }
             />
@@ -1310,33 +1320,9 @@ export default function Game() {
           return (
             <>
               <div className="section-title">
-                {botNumber ? `Bot ${botNumber} Playing` : "Bot Playing"}
+                {bot.name ? `${bot.name} (bot) Thinking...` : "Bot Playing"}
               </div>
-              <div style={{ marginBottom: 8 }}>
-                {bot ? `${bot.name} is taking actions...` : "Bot turn"}
-              </div>
-              <ul className="list scroll">
-                {entries.length === 0 ? (
-                  <li>Thinking...</li>
-                ) : (
-                  entries.map((e, i) => (
-                    <li key={i}>
-                      {typeof e === "string" ? (
-                        e
-                      ) : (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: (e.text || "").replace(
-                              /\*\*(.*?)\*\*/g,
-                              "<b>$1</b>"
-                            ),
-                          }}
-                        />
-                      )}
-                    </li>
-                  ))
-                )}
-              </ul>
+              <ul className="list scroll"></ul>
             </>
           );
         })()}
@@ -1466,7 +1452,10 @@ export default function Game() {
         >
           {groupedHand.map(({ card: c, count }, i) => {
             const canInspect =
-              game.phase === PHASE.AWAIT_ACTION && !hideHand && !game.drawnCard;
+              game.phase === PHASE.AWAIT_ACTION &&
+              !hideHand &&
+              !me?.isBot &&
+              !game.drawnCard;
             const isPlayable =
               canInspect &&
               (c === CARD.SKIP ||
@@ -1499,7 +1488,7 @@ export default function Game() {
                   key={i}
                   name={c}
                   size="hand"
-                  faceDown={hideHand}
+                  faceDown={hideHand || me?.isBot}
                   onClick={() => setSelectedCard(c)}
                   disabled={!isPlayable}
                   onDisabledClick={
@@ -1507,7 +1496,12 @@ export default function Game() {
                   }
                   style={
                     isHighlighted
-                      ? { outline: "4px solid var(--accent)" }
+                      ? {
+                          outline: "4px solid var(--accent)",
+                          borderRadius: 12,
+                          padding: 2,
+                          display: "inline-block",
+                        }
                       : undefined
                   }
                 />
@@ -1528,7 +1522,7 @@ export default function Game() {
                     key={j}
                     name={c}
                     size="hand"
-                    faceDown={hideHand}
+                    faceDown={hideHand || me?.isBot}
                     onClick={() => setSelectedCard(c)}
                     disabled={!isPlayable}
                     onDisabledClick={
@@ -1537,8 +1531,13 @@ export default function Game() {
                     style={{
                       "--stack-index": j,
                       ...(isHighlighted
-                        ? { outline: "4px solid var(--accent)" }
-                        : {}),
+                        ? {
+                            outline: "4px solid var(--accent)",
+                            borderRadius: 12,
+                            padding: 2,
+                            display: "inline-block",
+                          }
+                        : undefined),
                     }}
                   />
                 ))}

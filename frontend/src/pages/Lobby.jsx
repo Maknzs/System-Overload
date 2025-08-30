@@ -9,6 +9,7 @@ export default function Lobby({ onStart, onBack, authed }) {
     { name: "", isBot: false },
   ]);
   const nav = useNavigate();
+  const BOT_NAMES = ["Vizzini", "Inigo", "Fezzik", "Westley"];
 
   const addPlayer = (isBot = false) =>
     players.length < 5 && setPlayers([...players, { name: "", isBot }]);
@@ -30,16 +31,29 @@ export default function Lobby({ onStart, onBack, authed }) {
 
   const start = () => {
     // Assign defaults for any empty names before filtering
-    const finalized = players.map((p, i) => ({
-      ...p,
-      name: (p.name || (p.isBot ? `Bot ${i + 1}` : `Player ${i + 1}`)).trim(),
-    }));
+    // Bots are named in order: Vizzini, Inigo Montoya, Fezzik, Prince Humperdinck
+    let botCounter = 0;
+    const finalized = players.map((p, i) => {
+      let name = (p.name || "").trim();
+      if (!name) {
+        if (p.isBot) {
+          // Use next bot name from the list; fall back to generic if more than provided
+          name = BOT_NAMES[botCounter] || `Bot ${botCounter + 1}`;
+          botCounter += 1;
+        } else {
+          name = `Player ${i + 1}`;
+        }
+      }
+      return { ...p, name };
+    });
 
     const valid = finalized.filter((p) => Boolean(p.name));
     if (valid.length < 2) return; // need at least 2 participants
 
     // Map to shape expected by Game route
-    onStart(valid.map((p, i) => ({ id: String(i + 1), name: p.name, isBot: p.isBot })));
+    onStart(
+      valid.map((p, i) => ({ id: String(i + 1), name: p.name, isBot: p.isBot }))
+    );
   };
 
   const filledCount = players.filter((p) => (p.name || "").trim()).length;
@@ -68,7 +82,10 @@ export default function Lobby({ onStart, onBack, authed }) {
                 AI Bot
               </label>
               {i >= 2 && (
-                <button className="btn btn-ghost" onClick={() => removePlayer(i)}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => removePlayer(i)}
+                >
                   Remove
                 </button>
               )}
@@ -79,7 +96,7 @@ export default function Lobby({ onStart, onBack, authed }) {
           <button
             className="btn btn-accent"
             onClick={start}
-            disabled={players.filter((p) => (p.name || "").trim()).length < 2}
+            disabled={!(players[0]?.name || "").trim()}
           >
             Start Game
           </button>
