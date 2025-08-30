@@ -103,3 +103,8 @@
   transform: translateY(-2px);
   filter: brightness(1.1);
 }
+
+/* Do not dim disabled Reboot cards */
+.ui-card.is-disabled[data-card="Reboot"] {
+  opacity: 1;
+}

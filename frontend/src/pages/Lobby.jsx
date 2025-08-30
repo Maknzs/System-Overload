@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Lobby.css";
 
-export default function Lobby({ onStart, onBack, authed }) {
+export default function Lobby({ onStart, onBack, authed, user }) {
   const [names, setNames] = useState(["", ""]);
   const nav = useNavigate();
+
+  // If logged in, prefill first player name with username once (editable)
+  useEffect(() => {
+    if (!user || !user.username) return;
+    setNames((prev) => {
+      if (prev[0]) return prev; // don't overwrite if user already typed
+      const next = prev.slice();
+      next[0] = user.username;
+      return next;
+    });
+  }, [user]);
 
   const addPlayer = () => names.length < 5 && setNames([...names, ""]);
   const removePlayer = (i) =>

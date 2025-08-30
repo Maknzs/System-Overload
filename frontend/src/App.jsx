@@ -101,6 +101,7 @@ export default function App() {
         element={
           <Lobby
             authed={authed}
+            user={user}
             onStart={(players) => {
               const names = players.map((p) => p.name);
               nav("/game", { state: { names } });
