@@ -136,6 +136,7 @@ export default function App() {
         element={
           <Lobby
             authed={authed}
+            user={user}
             onStart={(players) => {
               // Preserve isBot flags and names so Game can identify bots
               nav("/game", { state: { players } });

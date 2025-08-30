@@ -32,6 +32,7 @@ export default function Card({
     <button
       type="button"
       className={`ui-card card--${size}${isDisabled ? " is-disabled" : ""}`}
+      data-card={name}
       onClick={handleClick}
       // hide the real card name when face-down
       title={faceDown ? "Hidden card" : title || name}

@@ -1,14 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Lobby.css";
 
 // Allows up to 5 total participants. Each row can be Human or AI Bot.
-export default function Lobby({ onStart, onBack, authed }) {
+export default function Lobby({ onStart, onBack, authed, user }) {
   const [players, setPlayers] = useState([
     { name: "", isBot: false },
     { name: "", isBot: false },
   ]);
   const nav = useNavigate();
+
+  // If logged in, prefill first player name with username once (editable)
+  useEffect(() => {
+    if (!user || !user.username) return;
+    setPlayers((prev) => {
+      if ((prev[0]?.name || "").trim()) return prev; // don't overwrite if user already typed
+      const next = prev.slice();
+      next[0] = { ...next[0], name: user.username };
+      return next;
+    });
+  }, [user]);
   const BOT_NAMES = ["Vizzini", "Inigo", "Fezzik", "Westley"];
 
   const addPlayer = (isBot = false) =>
@@ -55,8 +66,6 @@ export default function Lobby({ onStart, onBack, authed }) {
       valid.map((p, i) => ({ id: String(i + 1), name: p.name, isBot: p.isBot }))
     );
   };
-
-  const filledCount = players.filter((p) => (p.name || "").trim()).length;
 
   return (
     <div className="page">
