@@ -75,11 +75,11 @@
   background: linear-gradient(135deg, #6fe1ff, #9f6cff);
 }
 
-/* Count badge (top-left) */
+/* Count badge (top-right) */
 .discard__badge {
   position: absolute;
   top: 8px;
-  left: 8px;
+  right: 8px;
   min-width: 34px;
   height: 28px;
   padding: 0 8px;
@@ -96,10 +96,10 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
-/* Label (bottom-left) */
+/* Label (top-right, left of badge) */
 .discard__label {
   position: absolute;
-  left: 50px;
+  right: 50px;
   top: 15px;
   color: #a9b3d6;
   font-weight: 700;
