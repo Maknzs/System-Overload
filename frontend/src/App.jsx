@@ -44,35 +44,30 @@ export default function App() {
     }
   }, [token, nav]);
 
-  // Try Better Auth session first; fall back to legacy /auth/me if needed
+  // Try legacy /auth/me first (now bridged to Better Auth); fall back to Better Auth session
   useEffect(() => {
     let ignore = false;
     (async () => {
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      try {
-        const sess = await api("/better-auth/session");
-        if (ignore) return;
-        // Accept common shapes: { user }, or { session: { user } }
-        const u = (sess && (sess.user || (sess.session && sess.session.user))) || null;
-        if (u) {
-          // Map Better Auth fields to our UI expectations where possible
-          setUser({
-            email: u.email,
-            username: u.name || (user && user.username) || undefined,
-            gamesPlayed: user && user.gamesPlayed, // keep prior value if any
-          });
-          return;
-        }
-      } catch (_) {
-        // Ignore and try legacy endpoint next
-      }
       try {
         const me = await api("/auth/me");
         if (!ignore) setUser(me);
       } catch (e) {
+        // If legacy endpoint fails (e.g., initial page without token), try Better Auth session
+        try {
+          const sess = await api("/better-auth/session");
+          if (ignore) return;
+          const u = (sess && (sess.user || (sess.session && sess.session.user))) || null;
+          if (u) {
+            setUser({
+              email: u.email,
+              username: u.name || (user && user.username) || undefined,
+              gamesPlayed: user && user.gamesPlayed,
+            });
+            return;
+          }
+        } catch (_) {
+          // fall through to sign-out flow only on auth errors
+        }
         if (!ignore) {
           const msg = String(e && e.message ? e.message : "");
           const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);

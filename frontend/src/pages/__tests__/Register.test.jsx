@@ -12,7 +12,11 @@ describe('Register page', () => {
   it('registers and shows success, calls onRegistered', async () => {
     const goLogin = vi.fn();
     const onRegistered = vi.fn();
-    api.mockResolvedValue({ ok: true });
+    api.mockImplementation(async (path, opts = {}) => {
+      if (path === '/better-auth/sign-up/email' && opts.method === 'POST') return { token: null, user: { id: 'u1', email: 'x@example.com', name: 'alice' } };
+      if (path === '/auth/register' && opts.method === 'POST') return { ok: true };
+      return { ok: true };
+    });
     render(<Register goLogin={goLogin} onRegistered={onRegistered} />);
 
     await userEvent.type(screen.getByPlaceholderText(/email/i), 'x@example.com');
@@ -20,6 +24,10 @@ describe('Register page', () => {
     await userEvent.type(screen.getByPlaceholderText(/^password$/i), 'Password1!');
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
+    expect(api).toHaveBeenCalledWith('/better-auth/sign-up/email', {
+      method: 'POST',
+      body: { name: 'alice', email: 'x@example.com', password: 'Password1!' },
+    });
     expect(api).toHaveBeenCalledWith('/auth/register', {
       method: 'POST',
       body: { email: 'x@example.com', username: 'alice', password: 'Password1!' },
@@ -45,4 +53,3 @@ describe('Register page', () => {
     expect(goLogin).toHaveBeenCalled();
   });
 });
-
