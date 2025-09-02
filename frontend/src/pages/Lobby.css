@@ -16,3 +16,12 @@
   margin-top: 8px;
   flex-wrap: wrap;
 }
+
+.feedback-form {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+.feedback-form textarea.input {
+  min-height: 80px;
+}

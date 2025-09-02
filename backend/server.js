@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/auth");
 const accountRoutes = require("./routes/account");
+const feedbackRoutes = require("./routes/feedback");
 
 const app = express();
 app.use(express.json());
@@ -27,11 +28,14 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 
 const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, keyGenerator });
+const feedbackLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 50, keyGenerator });
 app.use("/api/account", accountLimiter);
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/account", accountRoutes);
+app.use("/api/feedback", feedbackLimiter);
+app.use("/api/feedback", feedbackRoutes);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

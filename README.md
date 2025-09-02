@@ -67,6 +67,22 @@ The Nginx container serves the React build and proxies `/api/*` → Express on `
 - `PUT /api/account/password` — `{ currentPassword, newPassword }`
 - `DELETE /api/account`
 - `POST /api/account/games-played` — increments `gamesPlayed`
+- `POST /api/feedback` — `{ email?, message, players? }` sends a feedback email (or logs to console if SMTP not configured)
+
+## Feedback Email Setup
+
+To receive feedback emails from the lobby form, configure SMTP in `backend/.env`:
+
+```
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_pass
+MAIL_FROM="System Overload <no-reply@example.com>"
+MAIL_TO=you@example.com
+```
+
+If SMTP is not configured, the server falls back to a console transport (logs the email payload). This is useful in local development.
 
 ## Postman Collection
 

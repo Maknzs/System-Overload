@@ -66,3 +66,7 @@ api.updatePassword = ({ currentPassword, newPassword }) =>
 
 // Delete account
 api.deleteAccount = () => api("/account", { method: "DELETE" });
+
+// Feedback
+api.submitFeedback = ({ email, message, players }) =>
+  api("/feedback", { method: "POST", body: { email, message, players } });
