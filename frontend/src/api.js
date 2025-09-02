@@ -13,6 +13,8 @@ export async function api(path, { method = "GET", body, headers } = {}) {
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
+    // Include cookies for session-based auth; harmless for existing JWT flow
+    credentials: 'include',
   });
   const text = await res.text();
   let data = {};
@@ -70,3 +72,6 @@ api.deleteAccount = () => api("/account", { method: "DELETE" });
 // Feedback
 api.submitFeedback = ({ email, message, players }) =>
   api("/feedback", { method: "POST", body: { email, message, players } });
+
+// Auth helpers
+api.logout = () => api("/auth/logout", { method: "POST" });

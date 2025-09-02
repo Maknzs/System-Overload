@@ -15,10 +15,20 @@ export default function Register({ goLogin, onRegistered }) {
     setErr(null);
     setLoading(true);
     try {
-      await api("/auth/register", {
+      // 1) Better Auth sign-up; use `username` as the display `name`
+      await api("/better-auth/sign-up/email", {
         method: "POST",
-        body: { email, username, password },
+        body: { name: username, email, password },
       });
+      // 2) Also create legacy user document for profile/gamesPlayed flows
+      try {
+        await api("/auth/register", {
+          method: "POST",
+          body: { email, username, password },
+        });
+      } catch (_) {
+        // Ignore duplicates or failures; Better Auth account exists
+      }
       setOk(true);
       onRegistered?.(); // App navigates to /login
     } catch (e) {

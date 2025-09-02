@@ -123,10 +123,12 @@ export default function Lobby({ onStart, onBack, authed, user }) {
         </div>
       </div>
 
-      {/* Feedback section (toggle like profile settings) */}
+      {/* Feedback section (toggle like profile settings)
       <div className="card" style={{ marginTop: 14 }}>
         <div className="hstack" style={{ justifyContent: "space-between" }}>
-          <div className="section-title" style={{ fontSize: 18 }}>Comments / Suggestions</div>
+          <div className="section-title" style={{ fontSize: 18 }}>
+            Comments / Suggestions
+          </div>
           <button
             type="button"
             className="btn btn-ghost"
@@ -187,7 +189,7 @@ export default function Lobby({ onStart, onBack, authed, user }) {
             </div>
           </form>
         )}
-      </div>
+      </div> */}
     </div>
   );
 }

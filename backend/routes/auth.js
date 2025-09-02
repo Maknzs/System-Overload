@@ -6,6 +6,8 @@ const User = require("../models/User");
 const isProbablyEmail = (v) => typeof v === "string" && v.includes("@");
 
 const router = express.Router();
+const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'so_session';
+const isProd = process.env.NODE_ENV === 'production';
 
 // POST /auth/register
 router.post(
@@ -92,6 +94,15 @@ router.post(
         process.env.JWT_SECRET,
         { expiresIn: "24h" }
       );
+      // Also set HttpOnly session cookie to begin migration to cookie-based auth
+      const maxAgeSeconds = 24 * 60 * 60; // 24h
+      res.cookie(SESSION_COOKIE, token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'lax' : 'lax',
+        maxAge: maxAgeSeconds * 1000,
+        path: '/',
+      });
       return res.json({
         ok: true,
         token,
@@ -116,31 +127,67 @@ router.get("/me", async (req, res) => {
   // Expect Bearer token
   const h = req.headers.authorization || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : null;
-  if (!token)
-    return res.status(401).json({
-      ok: false,
-      error: { code: "NO_TOKEN", message: "Missing token" },
-    });
+  // Fallback to cookie session if no Bearer provided (legacy or Better Auth)
+  const cookieHeader = req.headers.cookie || '';
+  let cookieToken = null;
+  if (!token && cookieHeader) {
+    try {
+      cookieToken = cookieHeader.split(';').map(s => s.trim()).reduce((acc, pair) => {
+        const idx = pair.indexOf('=');
+        if (idx > -1) {
+          const k = decodeURIComponent(pair.slice(0, idx));
+          const v = decodeURIComponent(pair.slice(idx + 1));
+          acc[k] = v;
+        }
+        return acc;
+      }, {})[SESSION_COOKIE];
+    } catch (_) {}
+  }
+  const tok = token || cookieToken;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(payload.sub).lean();
-    if (!user)
-      return res.status(404).json({
-        ok: false,
-        error: { code: "NOT_FOUND", message: "User not found" },
-      });
-    return res.json({
-      ok: true,
-      email: user.email,
-      username: user.username,
-      gamesPlayed: user.gamesPlayed,
-    });
+    if (tok) {
+      const payload = jwt.verify(tok, process.env.JWT_SECRET);
+      const user = await User.findById(payload.sub).lean();
+      if (!user)
+        return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "User not found" } });
+      return res.json({ ok: true, email: user.email, username: user.username, gamesPlayed: user.gamesPlayed });
+    }
+    // Try Better Auth session as a fallback
+    const baCookie =
+      (cookieHeader && cookieHeader.includes('better-auth.session_token')) ||
+      (cookieHeader && cookieHeader.includes('__Secure-better-auth.session_token'));
+    if (!baCookie) {
+      return res.status(401).json({ ok: false, error: { code: "NO_TOKEN", message: "Missing token" } });
+    }
+    const base = `http://127.0.0.1:${process.env.PORT || 8080}`;
+    const r = await fetch(`${base}/api/better-auth/session`, { headers: { cookie: cookieHeader } });
+    if (!r.ok) throw new Error('no session');
+    const body = await r.json();
+    const u = body?.user || body?.session?.user;
+    if (!u || !u.email) throw new Error('no user');
+    const doc = await User.findOne({ email: String(u.email).toLowerCase() }).lean();
+    if (!doc) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+    return res.json({ ok: true, email: doc.email, username: doc.username, gamesPlayed: doc.gamesPlayed });
   } catch (e) {
     return res.status(401).json({
       ok: false,
       error: { code: "BAD_TOKEN", message: "Invalid or expired token" },
     });
   }
+});
+
+// POST /auth/logout — clear cookie session (JWT tokens in clients remain unaffected)
+router.post('/logout', (req, res) => {
+  try {
+    res.cookie(SESSION_COOKIE, '', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'lax' : 'lax',
+      expires: new Date(0),
+      path: '/',
+    });
+  } catch (_) {}
+  return res.json({ ok: true });
 });
 
 module.exports = router;

@@ -7,6 +7,12 @@ const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth");
 const accountRoutes = require("./routes/account");
 const feedbackRoutes = require("./routes/feedback");
+let betterAuth;
+try {
+  betterAuth = require("./auth/betterAuth");
+} catch (_) {
+  betterAuth = null;
+}
 
 const app = express();
 app.use(express.json());
@@ -36,6 +42,17 @@ app.use("/api/auth", authRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/feedback", feedbackLimiter);
 app.use("/api/feedback", feedbackRoutes);
+
+// Mount Better Auth under /api/better-auth if available
+if (betterAuth) {
+  try {
+    const { handler } = betterAuth.createBetterAuth();
+    app.use("/api/better-auth", (req, res) => handler(req, res));
+    console.log("Better Auth mounted at /api/better-auth");
+  } catch (e) {
+    console.warn("Better Auth not initialized:", e && e.message ? e.message : e);
+  }
+}
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

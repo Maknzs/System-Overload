@@ -6,7 +6,7 @@ import Lobby from "./pages/Lobby.jsx";
 import Game from "./pages/Game.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
-import { api } from "./api"; // assumes you already have this helper
+import { api } from "./api"; // fetch helper (now includes credentials for cookies)
 
 export default function App() {
   const nav = useNavigate();
@@ -44,7 +44,7 @@ export default function App() {
     }
   }, [token, nav]);
 
-  // try to fetch the current user with the token
+  // Try Better Auth session first; fall back to legacy /auth/me if needed
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -53,19 +53,33 @@ export default function App() {
         return;
       }
       try {
-        const me = await api("/auth/me"); // your backend should return the user
+        const sess = await api("/better-auth/session");
+        if (ignore) return;
+        // Accept common shapes: { user }, or { session: { user } }
+        const u = (sess && (sess.user || (sess.session && sess.session.user))) || null;
+        if (u) {
+          // Map Better Auth fields to our UI expectations where possible
+          setUser({
+            email: u.email,
+            username: u.name || (user && user.username) || undefined,
+            gamesPlayed: user && user.gamesPlayed, // keep prior value if any
+          });
+          return;
+        }
+      } catch (_) {
+        // Ignore and try legacy endpoint next
+      }
+      try {
+        const me = await api("/auth/me");
         if (!ignore) setUser(me);
       } catch (e) {
-        // Clear token only on auth errors (401 / BAD_TOKEN). Keep token on transient failures.
         if (!ignore) {
           const msg = String(e && e.message ? e.message : "");
           const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
           if (authError) {
-            // Proactively clear storage to satisfy immediate checks in E2E
             try { localStorage.removeItem("token"); } catch {}
             setToken("");
             setUser(null);
-            // Ensure router navigates away from protected routes
             nav("/login");
           } else {
             setUser((u) => u || null);
@@ -87,7 +101,13 @@ export default function App() {
     [nav]
   );
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      // Prefer Better Auth sign-out (clears session cookies)
+      await api("/better-auth/sign-out", { method: "POST" });
+    } catch (_) {
+      // Ignore errors; fall through to local cleanup
+    }
     setToken("");
     setUser(null);
     nav("/login");
