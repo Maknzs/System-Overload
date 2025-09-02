@@ -28,6 +28,30 @@ function getDb() {
   return mongoose.connection.db;
 }
 
+// Convert Better Auth's generic where clause into a MongoDB filter
+function whereToMongo(where) {
+  if (!Array.isArray(where) || where.length === 0) return {};
+  const and = [];
+  const or = [];
+  for (const w of where) {
+    if (!w || !w.field) continue;
+    let cond;
+    if (w.operator === 'in' && Array.isArray(w.value)) {
+      cond = { [w.field]: { $in: w.value } };
+    } else {
+      cond = { [w.field]: w.value };
+    }
+    if (w.connector === 'OR') or.push(cond);
+    else and.push(cond);
+  }
+  if (and.length && or.length) return { $and: and, $or: or };
+  if (and.length === 1 && or.length === 0) return and[0];
+  if (or.length === 1 && and.length === 0) return or[0];
+  if (and.length) return { $and: and };
+  if (or.length) return { $or: or };
+  return {};
+}
+
 // A minimal Mongo adapter backed by the native driver.
 // We intentionally store `id` as a string field in documents (we do NOT reuse `_id`).
 function mongoAdapter() {
@@ -45,7 +69,8 @@ function mongoAdapter() {
           const projection = Array.isArray(select) && select.length
             ? select.reduce((acc, f) => ((acc[f] = 1), acc), {})
             : undefined;
-          const cursor = db.collection(model).find(where || {}, { projection });
+          const filter = whereToMongo(where);
+          const cursor = db.collection(model).find(filter, { projection });
           if (sortBy && sortBy.field) {
             cursor.sort({ [sortBy.field]: sortBy.order === 'desc' ? -1 : 1 });
           }
@@ -57,7 +82,8 @@ function mongoAdapter() {
           const projection = Array.isArray(select) && select.length
             ? select.reduce((acc, f) => ((acc[f] = 1), acc), {})
             : undefined;
-          const cursor = db.collection(model).find(where || {}, { projection });
+          const filter = whereToMongo(where);
+          const cursor = db.collection(model).find(filter, { projection });
           if (sortBy && sortBy.field) {
             cursor.sort({ [sortBy.field]: sortBy.order === 'desc' ? -1 : 1 });
           }
@@ -67,8 +93,9 @@ function mongoAdapter() {
         },
         async update({ model, where, update }) {
           const db = getDb();
+          const filter = whereToMongo(where);
           const res = await db.collection(model).findOneAndUpdate(
-            where || {},
+            filter,
             { $set: { ...update } },
             { returnDocument: 'after' }
           );
@@ -76,17 +103,20 @@ function mongoAdapter() {
         },
         async delete({ model, where }) {
           const db = getDb();
-          const res = await db.collection(model).findOneAndDelete(where || {});
+          const filter = whereToMongo(where);
+          const res = await db.collection(model).findOneAndDelete(filter);
           return res && (res.value || res);
         },
         async deleteMany({ model, where }) {
           const db = getDb();
-          const res = await db.collection(model).deleteMany(where || {});
+          const filter = whereToMongo(where);
+          const res = await db.collection(model).deleteMany(filter);
           return { count: res.deletedCount || 0 };
         },
         async count({ model, where }) {
           const db = getDb();
-          return await db.collection(model).countDocuments(where || {});
+          const filter = whereToMongo(where);
+          return await db.collection(model).countDocuments(filter || {});
         },
       };
     },
@@ -122,7 +152,8 @@ function createBetterAuth() {
     emailAndPassword: { enabled: true },
     // Use env secret or Better Auth default; recommend setting BETTER_AUTH_SECRET
     // secret: process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET,
-    adapter: mongoAdapter(),
+    // Better Auth 1.x uses `database` to configure persistence/adapters
+    database: mongoAdapter(),
     // Minimal CORS/trusted origins: with Caddy same-origin proxy, defaults are fine
   });
 
