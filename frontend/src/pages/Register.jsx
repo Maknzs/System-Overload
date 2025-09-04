@@ -32,16 +32,33 @@ export default function Register({ goLogin, onRegistered }) {
           body: { email, username, password },
         });
         registered = true;
-      } catch (_) {
-        // ignore; Better Auth path below may succeed
+      } catch (e) {
+        // If the server reported a specific conflict, surface it and stop
+        const code = e?.code || e?.body?.error?.code;
+        if (e?.status === 409 && (code === "EMAIL_EXISTS" || code === "USERNAME_EXISTS" || code === "ACCOUNT_EXISTS")) {
+          setErr(code === "USERNAME_EXISTS" ? "Username taken" : code === "EMAIL_EXISTS" ? "Account with Email already exists" : "Email or username already in use");
+          setLoading(false);
+          return;
+        }
+        // Otherwise continue to Better Auth path if enabled
       }
       if (!registered && ENABLE_BETTER_AUTH) {
-        // Optionally create a Better Auth account; use `username` as display name
-        await api("/better-auth/sign-up/email", {
-          method: "POST",
-          body: { name: username, email, password },
-        });
-        registered = true;
+        try {
+          // Optionally create a Better Auth account; use `username` as display name
+          await api("/better-auth/sign-up/email", {
+            method: "POST",
+            body: { name: username, email, password },
+          });
+          registered = true;
+        } catch (e) {
+          // Better Auth email conflicts → show friendly message
+          if (e?.status === 409) {
+            setErr("Account with Email already exists");
+            setLoading(false);
+            return;
+          }
+          throw e;
+        }
       }
 
       if (!registered) throw new Error("Registration failed");

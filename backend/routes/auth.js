@@ -27,17 +27,23 @@ router.post(
     const username = (req.body.username || "").trim();
     const email = (req.body.email || "").trim().toLowerCase();
     try {
-      const exists = await User.findOne({
-        $or: [{ email }, { username }],
-      }).lean();
-      if (exists)
+      // Check for conflicts with clearer messages
+      const [emailDoc, usernameDoc] = await Promise.all([
+        User.findOne({ email }).lean(),
+        User.findOne({ username }).lean(),
+      ]);
+      if (emailDoc) {
         return res.status(409).json({
           ok: false,
-          error: {
-            code: "ACCOUNT_EXISTS",
-            message: "Email or username already in use",
-          },
+          error: { code: "EMAIL_EXISTS", message: "Account with Email already exists" },
         });
+      }
+      if (usernameDoc) {
+        return res.status(409).json({
+          ok: false,
+          error: { code: "USERNAME_EXISTS", message: "Username taken" },
+        });
+      }
       const passwordHash = await bcrypt.hash(password, 12);
       await User.create({ email, username, passwordHash, gamesPlayed: 0 });
       return res.status(201).json({ ok: true });
