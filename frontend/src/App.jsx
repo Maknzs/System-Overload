@@ -8,6 +8,16 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import { api } from "./api"; // fetch helper (now includes credentials for cookies)
 
+// Feature flag: enable Better Auth integration only when explicitly turned on
+const ENABLE_BETTER_AUTH = (() => {
+  try {
+    const v = import.meta?.env?.VITE_ENABLE_BETTER_AUTH;
+    return v === "1" || String(v).toLowerCase() === "true";
+  } catch (_) {
+    return false;
+  }
+})();
+
 export default function App() {
   const nav = useNavigate();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
@@ -44,17 +54,27 @@ export default function App() {
     }
   }, [token, nav]);
 
-  // Try legacy /auth/me first (now bridged to Better Auth); fall back to Better Auth session
+  // Try legacy /auth/me first (now bridged to Better Auth); optionally fall back to Better Auth session
   useEffect(() => {
     let ignore = false;
     (async () => {
-      try {
-        const me = await api("/auth/me");
-        if (!ignore) setUser(me);
-      } catch (e) {
-        // If legacy endpoint fails (e.g., initial page without token), try Better Auth session
+      // Only call /auth/me if we actually have a token
+      if (token) {
         try {
-          const sess = await api("/better-auth/session");
+          // Treat 401/404 as non-exceptional to avoid noisy console errors
+          const me = await api("/auth/me", { okStatuses: [401, 404] });
+          if (!ignore && me && me.ok) {
+            setUser(me);
+            return;
+          }
+        } catch (e) {
+          // swallow; fallback flow below may run
+        }
+      }
+      // If no JWT token, optionally try Better Auth session for SSO/cookie login
+      if (!token && ENABLE_BETTER_AUTH) {
+        try {
+          const sess = await api("/better-auth/session", { okStatuses: [401, 404] });
           if (ignore) return;
           const u = (sess && (sess.user || (sess.session && sess.session.user))) || null;
           if (u) {
@@ -66,20 +86,16 @@ export default function App() {
             return;
           }
         } catch (_) {
-          // fall through to sign-out flow only on auth errors
+          // ignore
         }
-        if (!ignore) {
-          const msg = String(e && e.message ? e.message : "");
-          const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
-          if (authError) {
-            try { localStorage.removeItem("token"); } catch {}
-            setToken("");
-            setUser(null);
-            nav("/login");
-          } else {
-            setUser((u) => u || null);
-          }
+      }
+      if (!ignore) {
+        // No valid session found; clear any stale token and route to login if needed
+        if (token) {
+          try { localStorage.removeItem("token"); } catch {}
+          setToken("");
         }
+        setUser(null);
       }
     })();
     return () => {
@@ -98,8 +114,10 @@ export default function App() {
 
   const handleLogout = useCallback(async () => {
     try {
-      // Prefer Better Auth sign-out (clears session cookies)
-      await api("/better-auth/sign-out", { method: "POST" });
+      // Prefer Better Auth sign-out (clears session cookies) when enabled
+      if (ENABLE_BETTER_AUTH) {
+        await api("/better-auth/sign-out", { method: "POST" });
+      }
     } catch (_) {
       // Ignore errors; fall through to local cleanup
     }

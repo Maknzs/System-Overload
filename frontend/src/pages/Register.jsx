@@ -10,24 +10,35 @@ export default function Register({ goLogin, onRegistered }) {
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const ENABLE_BETTER_AUTH = (() => {
+    try {
+      const v = import.meta?.env?.VITE_ENABLE_BETTER_AUTH;
+      return v === "1" || String(v).toLowerCase() === "true";
+    } catch (_) {
+      return false;
+    }
+  })();
+
   async function submit(e) {
     e.preventDefault();
     setErr(null);
     setLoading(true);
     try {
-      // 1) Better Auth sign-up; use `username` as the display `name`
-      await api("/better-auth/sign-up/email", {
-        method: "POST",
-        body: { name: username, email, password },
-      });
-      // 2) Also create legacy user document for profile/gamesPlayed flows
+      // Prefer legacy registration first for consistency with production
       try {
         await api("/auth/register", {
           method: "POST",
           body: { email, username, password },
         });
       } catch (_) {
-        // Ignore duplicates or failures; Better Auth account exists
+        // ignore; Better Auth path below may succeed
+      }
+      if (ENABLE_BETTER_AUTH) {
+        // Optionally create a Better Auth account; use `username` as display name
+        await api("/better-auth/sign-up/email", {
+          method: "POST",
+          body: { name: username, email, password },
+        });
       }
       setOk(true);
       onRegistered?.(); // App navigates to /login
