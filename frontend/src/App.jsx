@@ -22,7 +22,7 @@ export default function App() {
   const nav = useNavigate();
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
-  const authed = Boolean(token);
+  const authed = Boolean(token) || (ENABLE_BETTER_AUTH && !!user);
 
   // keep api helper aware of token, if your helper needs it
   useEffect(() => {
@@ -192,7 +192,9 @@ export default function App() {
           ) : (
             <Register
               goLogin={() => nav("/login")}
-              onRegistered={() => nav("/")}
+              onRegistered={(t, u) => {
+                if (t && u) handleLogin(t, u); else nav("/login");
+              }}
             />
           )
         }

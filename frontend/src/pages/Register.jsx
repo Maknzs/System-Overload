@@ -25,23 +25,42 @@ export default function Register({ goLogin, onRegistered }) {
     setLoading(true);
     try {
       // Prefer legacy registration first for consistency with production
+      let registered = false;
       try {
         await api("/auth/register", {
           method: "POST",
           body: { email, username, password },
         });
+        registered = true;
       } catch (_) {
         // ignore; Better Auth path below may succeed
       }
-      if (ENABLE_BETTER_AUTH) {
+      if (!registered && ENABLE_BETTER_AUTH) {
         // Optionally create a Better Auth account; use `username` as display name
         await api("/better-auth/sign-up/email", {
           method: "POST",
           body: { name: username, email, password },
         });
+        registered = true;
+      }
+
+      if (!registered) throw new Error("Registration failed");
+
+      // Auto-login via legacy API so the app shows View Profile in the lobby
+      try {
+        const { token, user } = await api("/auth/login", {
+          method: "POST",
+          body: { emailOrUsername: email, password },
+        });
+        setOk(true);
+        onRegistered?.(token, user);
+        return;
+      } catch (_) {
+        // Fallback: if Better Auth is enabled, a session cookie may exist, but we can't set JWT here.
+        // Let the app route to login explicitly.
       }
       setOk(true);
-      onRegistered?.(); // App navigates to /login
+      onRegistered?.();
     } catch (e) {
       setErr(e.message || "Registration failed");
     } finally {
