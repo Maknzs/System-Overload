@@ -4,7 +4,8 @@ system-overload.com, www.system-overload.com {
     # 1) Proxy all /api/* (any method) to the API container
     @api path /api/*
     handle @api {
-        reverse_proxy http://systemoverload-api-1:8080
+        # Use the Docker Compose service name for reliable DNS resolution
+        reverse_proxy http://api:8080
     }
 
     # 2) Static site for everything else (SPA-friendly)
