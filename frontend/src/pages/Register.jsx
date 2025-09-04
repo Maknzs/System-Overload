@@ -75,12 +75,24 @@ export default function Register({ goLogin, onRegistered }) {
         <input
           className="input"
           type="email"
+          name="email"
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           className="input"
+          type="text"
+          name="username"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="Username"
           value={username}
           onChange={(e) => setUser(e.target.value)}
@@ -88,6 +100,8 @@ export default function Register({ goLogin, onRegistered }) {
         <input
           className="input"
           type="password"
+          name="new-password"
+          autoComplete="new-password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPw(e.target.value)}

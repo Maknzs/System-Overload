@@ -57,8 +57,9 @@ export default function Login({ onLogin, goRegister, goBack }) {
           className="input"
           type="email"
           placeholder="Email"
-          name="username"
-          autoComplete="username"
+          name="email"
+          autoComplete="email"
+          inputMode="email"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
