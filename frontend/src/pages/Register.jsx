@@ -89,6 +89,16 @@ export default function Register({ goLogin, onRegistered }) {
     <div className="page">
       <h1 className="page-header">Register</h1>
       <form className="card auth-box" onSubmit={submit}>
+        {ok && (
+        <p style={{ color: "var(--success)", marginTop: 10, textAlign: "center"  }}>
+          Account created!
+        </p>
+      )}
+        {err && (
+        <p style={{ color: "var(--danger)", marginTop: 10, textAlign: "center" }}>
+          {err}
+        </p>
+      )}
         <input
           className="input"
           type="email"
@@ -132,12 +142,6 @@ export default function Register({ goLogin, onRegistered }) {
           </button>
         </div>
       </form>
-      {ok && (
-        <p style={{ color: "var(--success)", marginTop: 10 }}>
-          Account created!
-        </p>
-      )}
-      {err && <p style={{ color: "var(--danger)", marginTop: 10 }}>{err}</p>}
     </div>
   );
 }
