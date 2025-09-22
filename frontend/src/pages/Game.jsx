@@ -25,6 +25,8 @@ import {
   chooseTripleCard,
 } from "../bot/mlBot";
 import "./Game.css"; // page styles (section boxes, layout, log, etc.)
+import { isDevUiEnabled } from "../config";
+import deckBack from "../assets/cards/SystemOverload.webp";
 
 const PHASE = {
   AWAIT_ACTION: "AWAIT_ACTION",
@@ -66,6 +68,9 @@ const HAND_DISPLAY_ORDER = [
 
 const STACK_SPACING = 20; // px gap between stacked duplicate cards
 const BOT_SPEEDS = [100, 250, 500, 750, 1000, 1500, 2000, 3000];
+const CARD_OVERLAY_FADE_MS = 180; // keep in sync with --dur-fade-quick in theme.css
+const DRAW_OVERLAY_HOLD_MS = 3000;
+const FATAL_OVERLAY_HOLD_MS = 60;
 
 function initialState(playerDefs) {
   const { deck, hands } = createDeck(playerDefs.length);
@@ -163,6 +168,46 @@ function reducer(state, action) {
   };
 
   switch (action.type) {
+    // Dev-only helpers (no-ops unless dev UI enabled)
+    case "DEV_GIVE_CARD": {
+      if (!isDevUiEnabled()) return state;
+      const pid = Number.isInteger(action.toId) ? action.toId : state.turn;
+      const count = Math.max(1, action.count || 1);
+      for (let i = 0; i < count; i++) S.hands[pid].push(action.cardName);
+      S.log.push(
+        `[dev] Gave ${count}x ${action.cardName} to ${S.players[pid].name}`
+      );
+      return S;
+    }
+    case "DEV_REMOVE_CARD": {
+      if (!isDevUiEnabled()) return state;
+      const pid = Number.isInteger(action.fromId) ? action.fromId : state.turn;
+      const count = Math.max(1, action.count || 1);
+      for (let i = 0; i < count; i++) {
+        const idx = S.hands[pid].indexOf(action.cardName);
+        if (idx !== -1) S.hands[pid].splice(idx, 1);
+      }
+      S.log.push(
+        `[dev] Removed up to ${count}x ${action.cardName} from ${S.players[pid].name}`
+      );
+      return S;
+    }
+    case "DEV_NEXT_DRAW": {
+      if (!isDevUiEnabled()) return state;
+      const card = action.cardName || CARD.FATAL;
+      S.deck.push(card); // push to top (end)
+      S.log.push(`[dev] Inserted ${card} on top of the deck`);
+      return S;
+    }
+    case "DEV_SET_TURN": {
+      if (!isDevUiEnabled()) return state;
+      const toId = action.toId;
+      if (!Number.isInteger(toId) || toId < 0 || toId >= S.players.length)
+        return state;
+      S.turn = toId;
+      S.log.push(`[dev] Turn set to ${S.players[toId].name}`);
+      return S;
+    }
     case "INIT": {
       const defs = action.players || action.names || [];
       return initialState(defs);
@@ -458,7 +503,6 @@ export default function Game() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showPeekModal, setShowPeekModal] = useState(false);
   const [flipFatal, setFlipFatal] = useState(false);
-  const [flipReboot, setFlipReboot] = useState(false);
   const [showBotModal, setShowBotModal] = useState(false);
   const botTurnStartLogIndexRef = useRef(0);
   const botIntervalRef = useRef(null);
@@ -468,6 +512,20 @@ export default function Game() {
   const [botSpeed, setBotSpeed] = useState(6); // 1..8 level (default 1500ms)
   const botTickMs = BOT_SPEEDS[botSpeed - 1] ?? 1000; // ms
   const botHighlightMs = Math.max(300, Math.floor(botTickMs * 0.6));
+  const [showTurnReminder, setShowTurnReminder] = useState(false);
+  const prevTurnInfoRef = useRef({ turn: 0, turnsToTake: 1 });
+
+  // Refs for draw animation (deck -> modal card)
+  const deckAnchorRef = useRef(null);
+  const drawnModalCardRef = useRef(null);
+  const fatalModalCardRef = useRef(null);
+  const [drawAnim, setDrawAnim] = useState(null); // { cardName, from, to, running, arrived, closing }
+  const [fatalAnim, setFatalAnim] = useState(null); // { from, to, running, arrived, closing }
+  // Refs to the fly-card overlays so we can force a reflow before starting transitions
+  const drawFlyRef = useRef(null);
+  const fatalFlyRef = useRef(null);
+  const lastDeckRectRef = useRef(null);
+  const [showRebootCover, setShowRebootCover] = useState(false);
 
   const me = game.players[game.turn];
   const hand = game.hands[game.turn];
@@ -512,7 +570,23 @@ export default function Game() {
       return () => clearTimeout(t);
     }
     setShowBotModal(false);
+    setShowTurnReminder(false);
   }, [game.turn]);
+
+  // Between-turn reminder for multi-turn sequences (same player, turns decreased)
+  useEffect(() => {
+    const prev = prevTurnInfoRef.current;
+    const isSamePlayer = game.turn === prev.turn;
+    const decreased = game.turnsToTake < prev.turnsToTake;
+    const isHuman = !game.players[game.turn]?.isBot;
+    if (isSamePlayer && decreased && game.turnsToTake >= 1 && isHuman) {
+      setShowTurnReminder(true);
+    }
+    prevTurnInfoRef.current = {
+      turn: game.turn,
+      turnsToTake: game.turnsToTake,
+    };
+  }, [game.turn, game.turnsToTake, game.players]);
 
   // Show Health Check modal with top 3 cards and close after 3 seconds
   useEffect(() => {
@@ -534,14 +608,205 @@ export default function Game() {
     if (!isBot) pendingReinsertRef.current = null;
   }, [game.turn, game.players]);
 
-  // Auto-close draw modal after 5 seconds (human players)
+  // Auto-close draw modal after 3 seconds (start when visible to user)
   useEffect(() => {
     const isBot = game.players[game.turn]?.isBot;
-    if (game.drawnCard && !isBot) {
-      const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 3000);
-      return () => clearTimeout(timer);
+    if (!game.drawnCard || isBot) return;
+    // For deck draws (advanceAfterDraw), wait until flight/flip overlay arrives
+    if (game.advanceAfterDraw) {
+      // If an animation is running, wait until it arrives; if no animation, proceed.
+      if (drawAnim && !drawAnim.arrived) return;
     }
-  }, [game.drawnCard, game.turn, game.players]);
+    const timer = setTimeout(() => dispatch({ type: "END_DRAW" }), 3000);
+    return () => clearTimeout(timer);
+  }, [
+    game.drawnCard,
+    game.advanceAfterDraw,
+    drawAnim?.arrived,
+    game.turn,
+    game.players,
+  ]);
+
+  // Launch deck->modal draw animation for human deck draws
+  useEffect(() => {
+    const isBot = game.players[game.turn]?.isBot;
+    if (!game.drawnCard || !game.advanceAfterDraw || isBot) {
+      setDrawAnim(null);
+      return;
+    }
+
+    // Compute start/end immediately; don't rely on modal being present.
+    const deckEl = deckAnchorRef.current;
+    const from = lastDeckRectRef.current || deckEl?.getBoundingClientRect();
+    if (!from) return; // can't animate without a start rect
+
+    // Prefer animating to the actual modal card if present (mounted hidden)
+    const targetEl = drawnModalCardRef.current;
+    let to;
+    if (targetEl) {
+      to = targetEl.getBoundingClientRect();
+    } else {
+      // Fallback: center-of-screen at 2x deck size
+      const root = document.documentElement;
+      const cs = getComputedStyle(root);
+      const modalWVar = cs.getPropertyValue("--card-modal-w").trim();
+      const modalHVar = cs.getPropertyValue("--card-modal-h").trim();
+      const modalW = parseFloat(modalWVar);
+      const modalH = parseFloat(modalHVar);
+      const toWidth =
+        Number.isFinite(modalW) && modalW > 0 ? modalW : from.width * 2;
+      const toHeight =
+        Number.isFinite(modalH) && modalH > 0 ? modalH : from.height * 2;
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const toLeft = Math.max(0, (vw - toWidth) / 2);
+      const toTop = Math.max(0, (vh - toHeight) / 2);
+      to = { left: toLeft, top: toTop, width: toWidth, height: toHeight };
+    }
+
+    setDrawAnim({
+      cardName: game.drawnCard,
+      from,
+      to,
+      running: false,
+      arrived: false,
+      closing: false,
+    });
+
+    // Double RAF + layout read to force initial styles to commit before enabling transitions.
+    let cancelled = false;
+    let rafId = 0;
+    const waitForElementThenRun = () => {
+      if (cancelled) return;
+      const el = drawFlyRef.current;
+      // If modal target exists now, retarget to its exact rect before starting
+      const target = drawnModalCardRef.current;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        setDrawAnim((s) => (s ? { ...s, to: rect } : s));
+      }
+      if (!el) {
+        rafId = requestAnimationFrame(waitForElementThenRun);
+        return;
+      }
+      // Force a layout read so initial styles commit
+      el.getBoundingClientRect();
+      rafId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setDrawAnim((s) => (s ? { ...s, running: true } : s));
+      });
+    };
+    rafId = requestAnimationFrame(waitForElementThenRun);
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.drawnCard, game.advanceAfterDraw, game.turn]);
+
+  // Safety: ensure overlay is cleared if transitionend is missed
+  useEffect(() => {
+    if (drawAnim?.running && !drawAnim?.arrived) {
+      let fadeTimer;
+      const timer = setTimeout(() => {
+        setDrawAnim((s) => {
+          if (!s || s.closing) return s;
+          return { ...s, closing: true };
+        });
+        fadeTimer = setTimeout(() => {
+          setDrawAnim((s) => (s && s.closing ? null : s));
+        }, CARD_OVERLAY_FADE_MS);
+      }, 2400);
+      return () => {
+        clearTimeout(timer);
+        if (fadeTimer) clearTimeout(fadeTimer);
+      };
+    }
+  }, [drawAnim?.running, drawAnim?.arrived]);
+
+  // Launch deck->modal fatal animation for human fatal draws
+  useEffect(() => {
+    const isBot = game.players[game.turn]?.isBot;
+    if (game.phase !== PHASE.RESOLVE_FATAL || isBot) {
+      setFatalAnim(null);
+      return;
+    }
+
+    const deckEl = deckAnchorRef.current;
+    const from = lastDeckRectRef.current || deckEl?.getBoundingClientRect();
+    if (!from) return; // can't animate without a start rect
+
+    const targetEl = fatalModalCardRef.current;
+    let to;
+    if (targetEl) {
+      to = targetEl.getBoundingClientRect();
+    } else {
+      const root = document.documentElement;
+      const cs = getComputedStyle(root);
+      const modalWVar = cs.getPropertyValue("--card-modal-w").trim();
+      const modalHVar = cs.getPropertyValue("--card-modal-h").trim();
+      const modalW = parseFloat(modalWVar);
+      const modalH = parseFloat(modalHVar);
+      const toWidth =
+        Number.isFinite(modalW) && modalW > 0 ? modalW : from.width * 2;
+      const toHeight =
+        Number.isFinite(modalH) && modalH > 0 ? modalH : from.height * 2;
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const toLeft = Math.max(0, (vw - toWidth) / 2);
+      const toTop = Math.max(0, (vh - toHeight) / 2);
+      to = { left: toLeft, top: toTop, width: toWidth, height: toHeight };
+    }
+
+    setFatalAnim({ from, to, running: false, arrived: false, closing: false });
+
+    let cancelled = false;
+    let rafId = 0;
+    const waitForElementThenRun = () => {
+      if (cancelled) return;
+      const el = fatalFlyRef.current;
+      const target = fatalModalCardRef.current;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        setFatalAnim((s) => (s ? { ...s, to: rect } : s));
+      }
+      if (!el) {
+        rafId = requestAnimationFrame(waitForElementThenRun);
+        return;
+      }
+      el.getBoundingClientRect();
+      rafId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setFatalAnim((s) => (s ? { ...s, running: true } : s));
+      });
+    };
+    rafId = requestAnimationFrame(waitForElementThenRun);
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.phase, game.turn]);
+
+  // Safety: ensure fatal overlay is cleared if transitionend is missed
+  useEffect(() => {
+    if (fatalAnim?.running && !fatalAnim?.arrived) {
+      let fadeTimer;
+      const timer = setTimeout(() => {
+        setFatalAnim((s) => {
+          if (!s || s.closing) return s;
+          return { ...s, closing: true };
+        });
+        fadeTimer = setTimeout(() => {
+          setFatalAnim((s) => (s && s.closing ? null : s));
+        }, CARD_OVERLAY_FADE_MS);
+      }, 2400);
+      return () => {
+        clearTimeout(timer);
+        if (fadeTimer) clearTimeout(fadeTimer);
+      };
+    }
+  }, [fatalAnim?.running, fatalAnim?.arrived]);
 
   // Bot logic (throttled; paused during 2s turn-start modal and while highlighting)
   useEffect(() => {
@@ -782,37 +1047,25 @@ export default function Game() {
     setFlipFatal(false);
   }, [game.phase, hasReboot]);
 
-  // Flip between Fatal and Reboot visuals when Reboot is available
+  // Delay and animate showing the Reboot cover when available
   useEffect(() => {
     if (game.phase === PHASE.RESOLVE_FATAL && hasReboot) {
-      const interval = setInterval(() => setFlipReboot((f) => !f), 750);
-      return () => clearInterval(interval);
+      setShowRebootCover(false);
+      const t = setTimeout(() => setShowRebootCover(true), 2000);
+      return () => clearTimeout(t);
     }
-    setFlipReboot(false);
+    setShowRebootCover(false);
   }, [game.phase, hasReboot]);
-
-  const fatalCardSrc = (() => {
-    if (game.phase !== PHASE.RESOLVE_FATAL) return CARD_IMG[CARD.FATAL];
-    if (hasReboot)
-      return flipReboot ? CARD_IMG[CARD.REBOOT] : CARD_IMG[CARD.FATAL];
-    return flipFatal ? STOCK_CARD_IMG : CARD_IMG[CARD.FATAL];
-  })();
 
   const fatalTitleText = (() => {
     if (game.phase !== PHASE.RESOLVE_FATAL) return `${CARD.FATAL}!`;
-    if (hasReboot) {
-      return flipReboot ? "Reboot Successful!" : `${CARD.FATAL}!`;
-    }
+    if (hasReboot) return `${CARD.FATAL}!`;
     // No reboot available: flip text in sync with card image
     return flipFatal ? "System Overload" : `${CARD.FATAL}!`;
   })();
 
   const fatalTitleStyle =
-    game.phase === PHASE.RESOLVE_FATAL
-      ? hasReboot
-        ? { color: flipReboot ? "var(--success)" : "var(--danger)" }
-        : { color: "var(--danger)" }
-      : undefined;
+    game.phase === PHASE.RESOLVE_FATAL ? { color: "var(--danger)" } : undefined;
 
   const countAlive = game.players.filter((p) => p.alive).length;
   const canPlayNow =
@@ -892,6 +1145,18 @@ export default function Game() {
     dispatch({ type: "REBOOT_INSERT", pos: posFromTop });
   }
 
+  // Dev helpers (UI gating only)
+  const devEnabled = isDevUiEnabled();
+  const otherPlayers = game.players
+    .map((p, i) => ({ ...p, id: i }))
+    .filter((p) => p.id !== game.turn && p.alive);
+  const ensureCardThen = (cardName, fn) => {
+    if (!game.hands[game.turn].includes(cardName)) {
+      dispatch({ type: "DEV_GIVE_CARD", cardName });
+    }
+    fn();
+  };
+
   return (
     <div className="page">
       <h1 className="page-header">System-Overload</h1>
@@ -969,12 +1234,236 @@ export default function Game() {
           })()}
       </div>
 
+      {/* Dev Tools Panel */}
+      {devEnabled && (
+        <div
+          style={{
+            margin: "8px 0 16px",
+            padding: 12,
+            border: "1px dashed #bbb",
+            borderRadius: 8,
+            background: "#fafafa",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Dev Tools</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              className="btn"
+              onClick={() =>
+                dispatch({ type: "DEV_NEXT_DRAW", cardName: CARD.FATAL })
+              }
+            >
+              Next Draw = Fatal
+            </button>
+            <button className="btn" onClick={() => dispatch({ type: "DRAW" })}>
+              Draw Now
+            </button>
+            {game.players.map((p, i) => (
+              <button
+                key={i}
+                className="btn"
+                onClick={() => dispatch({ type: "DEV_SET_TURN", toId: i })}
+              >
+                Set Turn → {p.name}
+              </button>
+            ))}
+            {[
+              CARD.REBOOT,
+              CARD.SKIP,
+              CARD.ATTACK,
+              CARD.SHUFFLE,
+              CARD.FUTURE,
+              CARD.FAVOR,
+            ].map((c) => (
+              <button
+                key={c}
+                className="btn"
+                onClick={() => dispatch({ type: "DEV_GIVE_CARD", cardName: c })}
+              >
+                Give {c}
+              </button>
+            ))}
+          </div>
+          <div
+            style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}
+          >
+            <button
+              className="btn"
+              onClick={() =>
+                ensureCardThen(CARD.FAVOR, () =>
+                  dispatch({ type: "PLAY_FAVOR" })
+                )
+              }
+            >
+              Start Favor
+            </button>
+            {game.phase === PHASE.CHOOSING_FAVOR &&
+              otherPlayers.map((p) => (
+                <button
+                  key={p.id}
+                  className="btn"
+                  onClick={() =>
+                    dispatch({ type: "RESOLVE_FAVOR_FROM", toId: p.id })
+                  }
+                >
+                  Favor → {p.name}
+                </button>
+              ))}
+          </div>
+          <div
+            style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}
+          >
+            {/* Start Pair/Triple by seeding required duplicates */}
+            {COMBO_CARDS.map((c) => (
+              <span
+                key={c}
+                style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
+              >
+                <span style={{ fontSize: 12, color: "#444" }}>{c}</span>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    dispatch({ type: "DEV_GIVE_CARD", cardName: c, count: 2 });
+                    dispatch({
+                      type: "START_COMBO",
+                      mode: "PAIR",
+                      cardName: c,
+                    });
+                  }}
+                >
+                  Pair
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    dispatch({ type: "DEV_GIVE_CARD", cardName: c, count: 3 });
+                    dispatch({
+                      type: "START_COMBO",
+                      mode: "TRIPLE",
+                      cardName: c,
+                    });
+                  }}
+                >
+                  Triple
+                </button>
+              </span>
+            ))}
+          </div>
+          {game.phase === PHASE.CHOOSING_PAIR_TARGET && (
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {otherPlayers.map((p) => (
+                <button
+                  key={p.id}
+                  className="btn"
+                  onClick={() =>
+                    dispatch({ type: "RESOLVE_PAIR_TARGET", toId: p.id })
+                  }
+                >
+                  Pair target → {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {game.phase === PHASE.CHOOSING_PAIR_CARD &&
+            game.comboTarget != null && (
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {(game.hands[game.comboTarget] || []).map((_, idx) => (
+                  <button
+                    key={idx}
+                    className="btn"
+                    onClick={() =>
+                      dispatch({ type: "RESOLVE_PAIR_FROM", index: idx })
+                    }
+                  >
+                    Take index {idx}
+                  </button>
+                ))}
+              </div>
+            )}
+          {game.phase === PHASE.CHOOSING_TRIPLE_TARGET && (
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {otherPlayers.map((p) => (
+                <button
+                  key={p.id}
+                  className="btn"
+                  onClick={() =>
+                    dispatch({ type: "RESOLVE_TRIPLE_TARGET", toId: p.id })
+                  }
+                >
+                  Triple target → {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {game.phase === PHASE.CHOOSING_TRIPLE_CARD && (
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {COMBO_CARDS.map((c) => (
+                <button
+                  key={c}
+                  className="btn"
+                  onClick={() =>
+                    dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName: c })
+                  }
+                >
+                  Name {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Pass-Device modal */}
       <PrivacyScreen
         show={hideHand}
         playerName={me?.name}
+        turnsToTake={game.turnsToTake}
         onContinue={() => setHideHand(false)}
       />
+
+      {/* Between-turn reminder for multi-turn sequences */}
+      <Modal
+        show={showTurnReminder}
+        onClose={() => setShowTurnReminder(false)}
+        dismissOnClick
+      >
+        <div className="modal-title">WAIT!</div>
+        <div className="section-title" style={{ marginBottom: 12 }}>
+          You have {game.turnsToTake} more{" "}
+          {game.turnsToTake === 1 ? "turn" : "turns"} to take!
+        </div>
+        <div className="subtle" style={{ marginTop: 12 }}>
+          Click anywhere to continue
+        </div>
+      </Modal>
 
       {/* Deck / Discard */}
       <div className="deck-area">
@@ -996,8 +1485,13 @@ export default function Game() {
           >
             <DeckCard
               count={game.deck.length}
+              anchorRef={deckAnchorRef}
               onClick={() => {
-                if (!me?.isBot && !game.fatalCard) dispatch({ type: "DRAW" });
+                if (!me?.isBot && !game.fatalCard) {
+                  const d = deckAnchorRef.current;
+                  if (d) lastDeckRectRef.current = d.getBoundingClientRect();
+                  dispatch({ type: "DRAW" });
+                }
               }}
               disabled={
                 hideHand ||
@@ -1029,6 +1523,11 @@ export default function Game() {
       {/* Drawn card modal (hidden during bot turns) */}
       <Modal
         show={!!game.drawnCard && !game.players[game.turn]?.isBot}
+        className={`modal--drawn${
+          game.advanceAfterDraw && drawAnim && !drawAnim.arrived
+            ? " modal--pre"
+            : ""
+        }`}
         onClose={() => dispatch({ type: "END_DRAW" })}
         dismissOnClick
       >
@@ -1036,26 +1535,31 @@ export default function Game() {
           <>
             <div className="modal-title">Success!</div>
             <div
-              className="hstack"
-              style={{ justifyContent: "center", margin: "10px 0" }}
+              className="hstack modal-card drawn-modal-card"
+              style={{ justifyContent: "center" }}
             >
-              <Card
-                name={game.drawnCard}
-                size="deck"
-                disabled
-                style={{
-                  width: "calc(var(--card-deck-w) * 2)",
-                  height: "calc(var(--card-deck-h) * 2)",
-                }}
-              />
+              <span ref={drawnModalCardRef} style={{ display: "inline-block" }}>
+                <Card
+                  name={game.drawnCard}
+                  size="modal"
+                  disabled
+                  variant="modal"
+                  // style={{
+                  //   // Show underlying modal card as soon as the fly-in arrives
+                  //   opacity: drawAnim && !drawAnim.arrived ? 0 : 1,
+                  //   transition:
+                  //     "opacity var(--dur-fade-quick) var(--ease-emph)",
+                  // }}
+                />
+              </span>
             </div>
             <div
-              className="section-title multiline card-desc"
-              style={{ marginBottom: 12 }}
+              className="section-title multiline card-desc modal-desc"
+              style={{ marginBottom: 2 }}
             >
               {CARD_DESC[game.drawnCard]}
             </div>
-            <div className="subtle" style={{ marginTop: 12 }}>
+            <div className="subtle" style={{ marginBottom: 2 }}>
               Click anywhere to exit
             </div>
             {/* <Button onClick={() => dispatch({ type: "END_DRAW" })}>
@@ -1064,6 +1568,70 @@ export default function Game() {
           </>
         )}
       </Modal>
+
+      {/* Flying draw card animation overlay */}
+      {drawAnim &&
+        (() => {
+          const { from, to, running, closing } = drawAnim;
+          const target = to ?? from;
+          const dx = target.left - from.left;
+          const dy = target.top - from.top;
+          const nudgeY = -3; // slight upward adjustment to align with modal
+          const targetWidth = target.width || from.width;
+          const targetHeight = target.height || from.height;
+          const startScale =
+            targetWidth > 0 && targetHeight > 0 ? from.width / targetWidth : 1;
+          const start = `translate(${from.left}px, ${from.top}px) scale(${startScale})`;
+          const end = `translate(${from.left + dx}px, ${
+            from.top + dy + nudgeY
+          }px) scale(1)`;
+          return (
+            <div
+              ref={drawFlyRef}
+              className={`fly-card${running ? " is-running" : ""}${
+                closing ? " is-closing" : ""
+              }`}
+              style={{
+                width: `${targetWidth}px`,
+                height: `${targetHeight}px`,
+                transform: running ? end : start,
+              }}
+              onTransitionEnd={(e) => {
+                // Only react to the container's transform transition end
+                if (
+                  e.target !== e.currentTarget ||
+                  e.propertyName !== "transform"
+                )
+                  return;
+                // Mark arrival so modal can show while overlay holds position
+                setDrawAnim((s) => (s ? { ...s, arrived: true } : s));
+                // Keep the overlay in place briefly so the modal can fade in, then ease it out.
+                setTimeout(() => {
+                  setDrawAnim((s) => {
+                    if (!s || s.closing) return s;
+                    return { ...s, closing: true };
+                  });
+                  setTimeout(() => {
+                    setDrawAnim((s) => (s && s.closing ? null : s));
+                  }, CARD_OVERLAY_FADE_MS);
+                }, DRAW_OVERLAY_HOLD_MS);
+              }}
+            >
+              <div className={`fly-card__inner${running ? " is-running" : ""}`}>
+                <img
+                  className="fly-card__face face--back"
+                  src={deckBack}
+                  alt="Deck back"
+                />
+                <img
+                  className="fly-card__face face--front"
+                  src={CARD_IMG[drawAnim.cardName] || deckBack}
+                  alt={drawAnim.cardName}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Health Check modal (hidden during bot turns) */}
       <Modal
@@ -1079,7 +1647,7 @@ export default function Game() {
         <div className="hstack" style={{ justifyContent: "center" }}>
           {[...game.peek].reverse().map((c, i) => (
             <div key={i} className="peek-card">
-              <Card name={c} />
+              <Card name={c} disabled variant="modal" />
               <div className="peek-order">{i + 1}</div>
             </div>
           ))}
@@ -1087,24 +1655,55 @@ export default function Game() {
       </Modal>
 
       {/* Fatal resolution */}
-      <Modal show={game.phase === PHASE.RESOLVE_FATAL}>
+      <Modal
+        show={game.phase === PHASE.RESOLVE_FATAL}
+        className={`modal--drawn${
+          !game.players[game.turn]?.isBot && fatalAnim && !fatalAnim.arrived
+            ? " modal--pre"
+            : ""
+        }`}
+      >
         <div className="modal-title" style={fatalTitleStyle}>
           {fatalTitleText}
         </div>
         <div
-          className="hstack"
+          className="hstack modal-card drawn-modal-card"
           style={{ justifyContent: "center", margin: "10px 0" }}
         >
-          <Card
-            name={CARD.FATAL}
-            size="deck"
-            disabled
-            src={fatalCardSrc}
-            style={{
-              width: "calc(var(--card-deck-w) * 2)",
-              height: "calc(var(--card-deck-h) * 2)",
-            }}
-          />
+          <span style={{ display: "inline-block" }}>
+            <div
+              ref={fatalModalCardRef}
+              className={`flip-card${
+                // When a Reboot is available, show the front (Fatal) without cycling.
+                hasReboot ? " is-flipped" : flipFatal ? "" : " is-flipped"
+              }`}
+              // style={{
+              //   // Show underlying modal card as soon as the fly-in arrives
+              //   opacity: fatalAnim && !fatalAnim.arrived ? 0 : 1,
+              //   transition: "opacity var(--dur-fade-quick) var(--ease-emph)",
+              // }}
+            >
+              <div className="flip-card__inner">
+                <img
+                  className="flip-card__face face--back"
+                  src={deckBack}
+                  alt="Deck back"
+                />
+                <img
+                  className="flip-card__face face--front"
+                  src={CARD_IMG[CARD.FATAL]}
+                  alt={CARD.FATAL}
+                />
+              </div>
+              {hasReboot && showRebootCover && (
+                <img
+                  className="reboot-cover animate-in"
+                  src={CARD_IMG[CARD.REBOOT]}
+                  alt={CARD.REBOOT}
+                />
+              )}
+            </div>
+          </span>
         </div>
         {hasReboot ? (
           <>
@@ -1144,6 +1743,70 @@ export default function Game() {
           </>
         )}
       </Modal>
+
+      {/* Flying fatal card animation overlay */}
+      {fatalAnim &&
+        (() => {
+          const { from, to, running, closing } = fatalAnim;
+          const target = to ?? from;
+          const dx = target.left - from.left;
+          const dy = target.top - from.top;
+          const nudgeY = 0; // slight upward adjustment to align with modal
+          const targetWidth = target.width || from.width;
+          const targetHeight = target.height || from.height;
+          const startScale =
+            targetWidth > 0 && targetHeight > 0 ? from.width / targetWidth : 1;
+          const start = `translate(${from.left}px, ${from.top}px) scale(${startScale})`;
+          const end = `translate(${from.left + dx}px, ${
+            from.top + dy + nudgeY
+          }px) scale(1)`;
+          return (
+            <div
+              ref={fatalFlyRef}
+              className={`fly-card${running ? " is-running" : ""}${
+                closing ? " is-closing" : ""
+              }`}
+              style={{
+                width: `${targetWidth}px`,
+                height: `${targetHeight}px`,
+                transform: running ? end : start,
+              }}
+              onTransitionEnd={(e) => {
+                // Only react to the container's transform transition end
+                if (
+                  e.target !== e.currentTarget ||
+                  e.propertyName !== "transform"
+                )
+                  return;
+                // Mark arrival so modal can show while overlay holds position
+                setFatalAnim((s) => (s ? { ...s, arrived: true } : s));
+                // Keep the overlay just long enough to cover the modal fade-in, then fade it away.
+                setTimeout(() => {
+                  setFatalAnim((s) => {
+                    if (!s || s.closing) return s;
+                    return { ...s, closing: true };
+                  });
+                  setTimeout(() => {
+                    setFatalAnim((s) => (s && s.closing ? null : s));
+                  }, CARD_OVERLAY_FADE_MS);
+                }, FATAL_OVERLAY_HOLD_MS);
+              }}
+            >
+              <div className={`fly-card__inner${running ? " is-running" : ""}`}>
+                <img
+                  className="fly-card__face face--back"
+                  src={deckBack}
+                  alt="Deck back"
+                />
+                <img
+                  className="fly-card__face face--front"
+                  src={CARD_IMG[CARD.FATAL] || deckBack}
+                  alt={CARD.FATAL}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Favor target selection */}
       <Modal show={game.phase === PHASE.CHOOSING_FAVOR}>
@@ -1222,11 +1885,13 @@ export default function Game() {
                 onClick={() =>
                   dispatch({ type: "RESOLVE_PAIR_FROM", index: i })
                 }
+                variant="modal"
                 style={
                   botHighlight?.type === "pair_card" && botHighlight.index === i
                     ? {
                         outline: "4px solid var(--accent)",
                         borderRadius: 12,
+                        "--modal-card-radius": "12px",
                         padding: 2,
                         display: "inline-block",
                       }
@@ -1285,12 +1950,14 @@ export default function Game() {
               onClick={() =>
                 dispatch({ type: "RESOLVE_TRIPLE_NAME", cardName: n })
               }
+              variant="modal"
               style={
                 botHighlight?.type === "triple_card" &&
                 botHighlight.cardName === n
                   ? {
                       outline: "4px solid var(--accent)",
                       borderRadius: 12,
+                      "--modal-card-radius": "12px",
                       padding: 2,
                       display: "inline-block",
                     }
@@ -1360,22 +2027,14 @@ export default function Game() {
         {selectedCard && (
           <>
             {/* <div className="section-title">{selectedCard}</div> */}
+            {/* <div
+              className="hstack modal-card"
+              style={{ justifyContent: "center" }}
+            > */}
+            <Card name={selectedCard} size="modal" disabled />
+            {/* </div> */}
             <div
-              className="hstack"
-              style={{ justifyContent: "center", margin: "10px 0" }}
-            >
-              <Card
-                name={selectedCard}
-                size="deck"
-                disabled
-                style={{
-                  width: "calc(var(--card-deck-w) * 2)",
-                  height: "calc(var(--card-deck-h) * 2)",
-                }}
-              />
-            </div>
-            <div
-              className="section-title multiline card-desc"
+              className="section-title multiline card-desc modal-desc"
               style={{ marginBottom: 12 }}
             >
               {CARD_DESC[selectedCard]}
@@ -1386,7 +2045,7 @@ export default function Game() {
               </div>
             )} */}
             {selectedCard === CARD.REBOOT && (
-              <div className="section-title" style={{ marginBottom: 12 }}>
+              <div className="section-title" style={{ marginBottom: 2 }}>
                 It cannot be played during your turn.
               </div>
             )}
@@ -1433,7 +2092,7 @@ export default function Game() {
                 </>
               )}
             </div>
-            <div className="subtle" style={{ marginTop: 12 }}>
+            <div className="subtle" style={{ marginTop: 2 }}>
               Click anywhere to exit
             </div>
           </>
@@ -1455,7 +2114,9 @@ export default function Game() {
               game.phase === PHASE.AWAIT_ACTION &&
               !hideHand &&
               !me?.isBot &&
-              !game.drawnCard;
+              !game.drawnCard &&
+              // Disable selecting cards while Health Check modal is open
+              !showPeekModal;
             const isPlayable =
               canInspect &&
               (c === CARD.SKIP ||

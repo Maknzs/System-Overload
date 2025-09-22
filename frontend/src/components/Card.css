@@ -1,110 +1,54 @@
-.cardwrap {
-  width: 110px;
-  height: 160px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: var(--shadow);
-  position: relative;
-  display: grid;
-  place-items: center;
-  transition: transform 0.12s ease, filter 0.16s ease, box-shadow 0.16s ease;
-}
-.cardwrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.cardwrap .label {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
-  background: linear-gradient(
-    135deg,
-    rgba(108, 204, 255, 0.8),
-    rgba(159, 108, 255, 0.8)
-  );
-  color: #05112b;
-  padding: 0.28rem 0.45rem;
-  border-radius: 8px;
-  text-align: center;
-}
-.cardwrap.is-disabled {
-  filter: grayscale(0.1) opacity(0.9);
-}
-.cardwrap:not(.is-disabled):hover {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-}
-.card--clickable {
-  cursor: pointer;
-  transform: translateY(0);
-}
-.card--clickable:hover {
-  transform: translateY(-3px) rotate(-0.5deg);
-}
-.card--disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-/* components/Card.css */
-:root {
-  /* Unify hand & discard to deck card sizing */
-  --card-hand-w: 130px;
-  --card-hand-h: 180px;
-  --card-discard-w: 130px;
-  --card-discard-h: 180px;
-  /* Keep deck token for larger showcase cards if needed */
-  --card-deck-w: 170px;
-  --card-deck-h: 230px;
-  --card-radius: 14px;
-  --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-}
 .ui-card {
+  --card-scale: 1;
+  width: calc(var(--card-w) * var(--card-scale));
+  height: calc(var(--card-h) * var(--card-scale));
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 0;
   padding: 0;
   cursor: pointer;
+  border-radius: var(--card-radius);
+  transition: transform 0.12s ease, filter 0.16s ease, box-shadow 0.16s ease;
 }
+
 .ui-card.is-disabled {
   cursor: default;
   opacity: 0.9;
 }
+
 .ui-card img {
   width: 100%;
-  height: 95%; /* prevent vertical cropping */
-  max-height: 100%; /* don't exceed container height */
-  object-fit: contain; /* keep full image visible */
-  display: block; /* remove baseline gaps */
-  border-radius: var(--card-radius);
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: inherit;
   box-shadow: var(--card-shadow);
   pointer-events: none;
 }
+
 .card--hand {
-  width: var(--card-hand-w);
-  height: var(--card-hand-h);
+  --card-scale: var(--card-hand-scale, 1);
 }
-.card--discard {
-  width: var(--card-discard-w);
-  height: var(--card-discard-h);
-}
+
 .card--deck {
-  width: var(--card-deck-w);
-  height: var(--card-deck-h);
+  --card-scale: var(--card-deck-scale, 1);
 }
+
+.card--discard {
+  --card-scale: var(--card-discard-scale, 1);
+}
+
+.card--modal {
+  --card-scale: var(--card-modal-scale, 2);
+}
+
 .ui-card:not(.is-disabled):hover {
   transform: translateY(-2px);
   filter: brightness(1.1);
 }
 
-/* Do not dim disabled Reboot cards */
 .ui-card.is-disabled[data-card="Reboot"] {
   opacity: 1;
 }

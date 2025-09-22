@@ -18,6 +18,13 @@ npm install
 npm start
 ```
 
+Optional: enable development phase flags (looser rate limits, dev-only info route):
+
+```bash
+# backend/.env
+APP_PHASE=development
+```
+
 ### Run Backend Tests
 
 ```bash
@@ -47,6 +54,14 @@ VITE_API_BASE=http://localhost:8080/api
 
 Then restart `npm run dev`.
 
+If you want to surface dev-only UI affordances in the client, set a phase:
+
+```bash
+# in frontend/.env.development (or .env.local)
+VITE_APP_PHASE=development
+```
+The client also respects Vite's `import.meta.env.MODE` and will treat `MODE=development` as a dev phase if `VITE_APP_PHASE` is not set.
+
 ## Docker Compose (EC2 - Production)
 
 At the repo root:
@@ -68,6 +83,23 @@ The Nginx container serves the React build and proxies `/api/*` → Express on `
 - `PUT /api/account/password` — `{ currentPassword, newPassword }`
 - `DELETE /api/account`
 - `POST /api/account/games-played` — increments `gamesPlayed`
+  
+When `APP_PHASE=development` (or `NODE_ENV=development`), the API also exposes:
+
+- `GET /api/dev/info` — returns minimal environment flags `{ phase, nodeEnv }` to help verify environment wiring (no secrets).
+
+## Development Phase Switch
+
+- Backend reads `APP_PHASE` (development | staging | production) and derives a dev mode when `APP_PHASE=development` or `NODE_ENV=development`.
+- Dev mode effects:
+  - Looser rate limits (auth/account) to avoid throttling local testing.
+  - Adds `GET /api/dev/info` to validate environment wiring.
+- Frontend reads `VITE_APP_PHASE` (optional). If unset, it falls back to Vite's `MODE`.
+  - You can show a small dev badge or enable debug UI based on this flag.
+
+Notes:
+- Keep secrets out of `.env.sample`. Use real values only in local `.env` files.
+- Do not enable dev endpoints in production; they are scoped by `APP_PHASE`.
 
 ## Postman Collection
 

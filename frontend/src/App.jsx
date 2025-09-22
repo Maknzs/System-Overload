@@ -7,6 +7,7 @@ import Game from "./pages/Game.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import { api } from "./api"; // assumes you already have this helper
+import { isDevUiEnabled, APP_PHASE } from "./config";
 
 export default function App() {
   const nav = useNavigate();
@@ -128,7 +129,29 @@ export default function App() {
     />
   );
 
+  const devEnabled = isDevUiEnabled();
+
   return (
+    <>
+    {devEnabled && (
+      <div
+        style={{
+          position: "fixed",
+          top: 8,
+          right: 8,
+          background: "#1f2937",
+          color: "#fff",
+          padding: "4px 8px",
+          borderRadius: 6,
+          fontSize: 12,
+          zIndex: 1000,
+          opacity: 0.9,
+        }}
+        title={`Phase: ${APP_PHASE}`}
+      >
+        DEV
+      </div>
+    )}
     <Routes>
       {/* Root is the Lobby (public) */}
       <Route
@@ -201,5 +224,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

@@ -1,24 +1,24 @@
 .deckcard {
   position: relative;
-  width: 130px;
-  height: 180px;
+  --card-scale: var(--card-deck-scale, 1);
+  width: calc(var(--card-w) * var(--card-scale));
+  height: calc(var(--card-h) * var(--card-scale));
   padding: 0;
   border: 0;
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: transparent;
   cursor: default; /* change to pointer if you make it clickable */
   transform: translateZ(0);
   transition: transform 0.12s ease, filter 0.16s ease, box-shadow 0.16s ease;
+  border-radius: var(--card-radius);
 }
 
 .deckcard__img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  border-radius: inherit;
+  box-shadow: var(--card-shadow);
   filter: saturate(1.05) contrast(1.02);
 }
 

@@ -13,8 +13,39 @@
   --danger: red; /* red-500 */
   --warning: #f59e0b; /* amber-500 */
 
-  --radius: 14px;
+  --radius: 7px;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+
+  /* Canonical card metrics */
+  --card-w: 130px;
+  --card-h: 174px;
+  --card-radius: 5%;
+  --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+
+  /* Scale factors for different contexts */
+  --card-hand-scale: 1;
+  --card-deck-scale: 1;
+  --card-discard-scale: 1;
+  --card-modal-scale: 2;
+
+  /* Derived sizes shared across components */
+  --card-hand-w: calc(var(--card-w) * var(--card-hand-scale));
+  --card-hand-h: calc(var(--card-h) * var(--card-hand-scale));
+  --card-deck-w: calc(var(--card-w) * var(--card-deck-scale));
+  --card-deck-h: calc(var(--card-h) * var(--card-deck-scale));
+  --card-discard-w: calc(var(--card-w) * var(--card-discard-scale));
+  --card-discard-h: calc(var(--card-h) * var(--card-discard-scale));
+  --card-modal-w: calc(var(--card-w) * var(--card-modal-scale));
+  --card-modal-h: calc(var(--card-h) * var(--card-modal-scale));
+
+  /* Animation tokens (keep motion consistent) */
+  --ease-emph: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fly: 1000ms; /* deck -> modal travel */
+  --dur-flip: 560ms; /* card face flip */
+  --dur-modal: 560ms; /* modal backdrop + panel */
+  --dur-modal-close: 300ms; /* modal fade-out */
+  --dur-fade-quick: 180ms; /* small fades for UI bits */
+  --dur-reboot: 600ms; /* reboot cover slide-in */
 }
 
 /* Global base */
@@ -79,20 +110,14 @@ body {
   box-shadow: var(--shadow);
   padding: 16px 18px;
 }
-/* --- Card sizing tokens --- */
-:root {
-  /* Hand cards (players) */
-  --card-w: 120px;
-  --card-h: 176px;
 
-  /* Discard thumbnails (smaller) */
-  --discard-w: 88px;
-  --discard-h: 128px;
-
-  /* Big deck artwork */
-  --deck-w: 160px;
-  --deck-h: 224px;
+.card--frameless {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
 }
+/* Card sizing tokens defined in :root above. */
 .section-title {
   font-size: 24px;
   font-weight: 700;
