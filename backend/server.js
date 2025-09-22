@@ -53,8 +53,7 @@ app.use("/api/account", accountLimiter);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/account", accountRoutes);
-app.use("/api/feedback", feedbackLimiter);
-app.use("/api/feedback", feedbackRoutes);
+app.use("/api/feedback", feedbackLimiter, feedbackRoutes);
 
 // Mount Better Auth under /api/better-auth if available
 if (betterAuth) {
