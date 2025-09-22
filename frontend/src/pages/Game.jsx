@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   createDeck,
@@ -509,11 +509,16 @@ export default function Game() {
   const pendingReinsertRef = useRef(null); // { pos }
   const botBusyRef = useRef(false); // gates bot while highlighting/sequencing
   const [botHighlight, setBotHighlight] = useState(null); // { type, ... }
-  const [botSpeed, setBotSpeed] = useState(6); // 1..8 level (default 1500ms)
+  const [botSpeed, setBotSpeed] = useState(3); // 1..8 level (default 1500ms)
   const botTickMs = BOT_SPEEDS[botSpeed - 1] ?? 1000; // ms
   const botHighlightMs = Math.max(300, Math.floor(botTickMs * 0.6));
   const [showTurnReminder, setShowTurnReminder] = useState(false);
   const prevTurnInfoRef = useRef({ turn: 0, turnsToTake: 1 });
+  const [isProMode, setIsProMode] = useState(false);
+  const handAreaRef = useRef(null);
+  const proModeOverlayRef = useRef(null);
+  const selectedCardElementRef = useRef(null);
+  const [proModeOverlay, setProModeOverlay] = useState(null); // { top, left, width, height }
 
   // Refs for draw animation (deck -> modal card)
   const deckAnchorRef = useRef(null);
@@ -1100,6 +1105,114 @@ export default function Game() {
     selectedCount >= 3 &&
     canPlayNow;
 
+  const resetSelectedCard = useCallback(() => {
+    setSelectedCard(null);
+    setProModeOverlay(null);
+    selectedCardElementRef.current = null;
+  }, []);
+
+  const updateProModeOverlayPosition = useCallback(() => {
+    if (!isProMode) return;
+    const container = handAreaRef.current;
+    const cardEl = selectedCardElementRef.current;
+    if (!container || !cardEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = cardEl.getBoundingClientRect();
+    setProModeOverlay({
+      top: cardRect.top - containerRect.top,
+      left: cardRect.left - containerRect.left,
+      width: cardRect.width,
+      height: cardRect.height,
+    });
+  }, [isProMode]);
+
+  const handleCardClick = useCallback(
+    (cardName, event) => {
+      const target = event?.currentTarget || null;
+      if (isProMode && cardName === CARD.REBOOT) {
+        return;
+      }
+      setSelectedCard(cardName);
+      if (isProMode && target) {
+        selectedCardElementRef.current = target;
+        updateProModeOverlayPosition();
+      } else {
+        selectedCardElementRef.current = target;
+        setProModeOverlay(null);
+      }
+    },
+    [isProMode, updateProModeOverlayPosition]
+  );
+
+  useEffect(() => {
+    if (hideHand) {
+      resetSelectedCard();
+    }
+  }, [hideHand, resetSelectedCard]);
+
+  useEffect(() => {
+    if (!selectedCard) return;
+    if (!hand.includes(selectedCard)) {
+      resetSelectedCard();
+    }
+  }, [hand, selectedCard, resetSelectedCard]);
+
+  useEffect(() => {
+    if (!isProMode || !selectedCard || !proModeOverlay) return;
+
+    const handlePointerDown = (event) => {
+      const overlayEl = proModeOverlayRef.current;
+      const cardEl = selectedCardElementRef.current;
+      if (!overlayEl) return;
+      const target = event.target;
+      const isNode = typeof Node !== "undefined" && target instanceof Node;
+      if (isNode && overlayEl.contains(target)) return;
+      if (isNode && cardEl && cardEl.contains(target)) return;
+      resetSelectedCard();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isProMode, selectedCard, proModeOverlay, resetSelectedCard]);
+
+  useEffect(() => {
+    if (!isProMode || !selectedCard || !proModeOverlay) return;
+
+    const handleWindowChange = () => {
+      updateProModeOverlayPosition();
+    };
+
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [isProMode, selectedCard, proModeOverlay, updateProModeOverlayPosition]);
+
+  useEffect(() => {
+    if (!isProMode || !selectedCard) return;
+    updateProModeOverlayPosition();
+  }, [isProMode, selectedCard, updateProModeOverlayPosition]);
+
+  function handlePlaySelected() {
+    if (!selectedCard) return;
+    playCardByName(selectedCard);
+    resetSelectedCard();
+  }
+
+  function handleStartCombo(mode) {
+    if (!selectedCard) return;
+    dispatch({
+      type: "START_COMBO",
+      cardName: selectedCard,
+      mode,
+    });
+    resetSelectedCard();
+  }
+
   function playCardByName(cardName) {
     if (!me?.alive) return;
 
@@ -1173,6 +1286,24 @@ export default function Game() {
           <span className="subtle" style={{ marginLeft: 6 }}>
             (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
           </span>
+        </span>
+        <span
+          className="pill"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+        >
+          <span style={{ fontWeight: 700 }}>Pro</span>
+          <Button
+            type="button"
+            kind={isProMode ? "success" : "ghost"}
+            onClick={() => {
+              setIsProMode((prev) => !prev);
+              resetSelectedCard();
+            }}
+            aria-pressed={isProMode}
+            style={{ padding: "6px 12px" }}
+          >
+            {isProMode ? "On" : "Off"}
+          </Button>
         </span>
         {game.players.some((p) => p.isBot) &&
           (() => {
@@ -2020,8 +2151,8 @@ export default function Game() {
 
       {/* Card action modal */}
       <Modal
-        show={selectedCard !== null}
-        onClose={() => setSelectedCard(null)}
+        show={selectedCard !== null && !isProMode}
+        onClose={resetSelectedCard}
         dismissOnClick
       >
         {selectedCard && (
@@ -2052,10 +2183,7 @@ export default function Game() {
             <div className="hstack" style={{ justifyContent: "center" }}>
               {isActionCard && selectedCard !== CARD.REBOOT && (
                 <Button
-                  onClick={() => {
-                    playCardByName(selectedCard);
-                    setSelectedCard(null);
-                  }}
+                  onClick={handlePlaySelected}
                   disabled={!canPlaySelected}
                 >
                   Play
@@ -2064,27 +2192,13 @@ export default function Game() {
               {selectedCard !== CARD.REBOOT && selectedCard !== CARD.FATAL && (
                 <>
                   <Button
-                    onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "PAIR",
-                      });
-                      setSelectedCard(null);
-                    }}
+                    onClick={() => handleStartCombo("PAIR")}
                     disabled={!canPair}
                   >
                     Pair
                   </Button>
                   <Button
-                    onClick={() => {
-                      dispatch({
-                        type: "START_COMBO",
-                        cardName: selectedCard,
-                        mode: "TRIPLE",
-                      });
-                      setSelectedCard(null);
-                    }}
+                    onClick={() => handleStartCombo("TRIPLE")}
                     disabled={!canTriple}
                   >
                     Triple
@@ -2107,7 +2221,13 @@ export default function Game() {
 
         <div
           className="hstack"
-          style={{ flexWrap: "wrap", columnGap: 10, rowGap: 8 }}
+          ref={handAreaRef}
+          style={{
+            flexWrap: "wrap",
+            columnGap: 10,
+            rowGap: 8,
+            position: "relative",
+          }}
         >
           {groupedHand.map(({ card: c, count }, i) => {
             const canInspect =
@@ -2150,10 +2270,10 @@ export default function Game() {
                   name={c}
                   size="hand"
                   faceDown={hideHand || me?.isBot}
-                  onClick={() => setSelectedCard(c)}
+                  onClick={(event) => handleCardClick(c, event)}
                   disabled={!isPlayable}
                   onDisabledClick={
-                    showInfo ? () => setSelectedCard(c) : undefined
+                    showInfo ? (event) => handleCardClick(c, event) : undefined
                   }
                   style={
                     isHighlighted
@@ -2184,10 +2304,12 @@ export default function Game() {
                     name={c}
                     size="hand"
                     faceDown={hideHand || me?.isBot}
-                    onClick={() => setSelectedCard(c)}
+                    onClick={(event) => handleCardClick(c, event)}
                     disabled={!isPlayable}
                     onDisabledClick={
-                      showInfo ? () => setSelectedCard(c) : undefined
+                      showInfo
+                        ? (event) => handleCardClick(c, event)
+                        : undefined
                     }
                     style={{
                       "--stack-index": j,
@@ -2205,6 +2327,53 @@ export default function Game() {
               </div>
             );
           })}
+          {isProMode && selectedCard && proModeOverlay && (
+            <div
+              ref={proModeOverlayRef}
+              className="pro-mode-overlay"
+              style={{
+                top: `${proModeOverlay.top}px`,
+                left: `${proModeOverlay.left}px`,
+                width: `${proModeOverlay.width}px`,
+                height: `${proModeOverlay.height}px`,
+              }}
+            >
+              <div className="pro-mode-overlay__cover" />
+              <div className="pro-mode-overlay__actions">
+                {isActionCard && selectedCard !== CARD.REBOOT && (
+                  <Button
+                    type="button"
+                    onClick={handlePlaySelected}
+                    disabled={!canPlaySelected}
+                    style={{ width: "100%" }}
+                  >
+                    Single
+                  </Button>
+                )}
+                {selectedCard !== CARD.REBOOT &&
+                  selectedCard !== CARD.FATAL && (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={() => handleStartCombo("PAIR")}
+                        disabled={!canPair}
+                        style={{ width: "100%" }}
+                      >
+                        Pair
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleStartCombo("TRIPLE")}
+                        disabled={!canTriple}
+                        style={{ width: "100%" }}
+                      >
+                        Triple
+                      </Button>
+                    </>
+                  )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

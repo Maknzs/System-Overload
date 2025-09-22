@@ -3,6 +3,7 @@
   justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 14px;
 }
 .pill {
@@ -14,6 +15,10 @@
   background: #0f1533;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--muted);
+}
+.meta > * {
+  display: inline-flex;
+  align-items: center;
 }
 .hstack {
   display: flex;
@@ -67,6 +72,38 @@
   position: absolute;
   top: 0;
   left: calc(var(--stack-index) * var(--stack-spacing, 20px));
+}
+
+.pro-mode-overlay {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pro-mode-overlay__cover {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  background: rgba(10, 16, 39, 0.82);
+  box-shadow: var(--card-shadow);
+  pointer-events: none;
+}
+
+.pro-mode-overlay__actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.pro-mode-overlay__actions .btn {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
 }
 
 /* Draw animation: deck -> modal */
