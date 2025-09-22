@@ -204,11 +204,10 @@ export default function Lobby({ onStart, onBack, authed, user }) {
         <div className="card">
           <div className="lobby-grid">
             <div className="player-row player-header">
-              <div>
+              <div className="name-col">
                 <div className="section-title">Player Names</div>
               </div>
               <div className="bot-col">Bot?</div>
-              <div className="remove-col"></div>
             </div>
             {players.map((p, i) => {
               // Determine placeholder using the first unused default bot name
@@ -216,23 +215,13 @@ export default function Lobby({ onStart, onBack, authed, user }) {
               const placeholder = p.isBot ? botPlaceholder : `Human #${i + 1}`;
               return (
                 <div className="player-row" key={i}>
-                  <input
-                    className="input"
-                    value={p.name}
-                    placeholder={placeholder}
-                    onChange={(e) => updateName(i, e.target.value)}
-                  />
-                  <div className="bot-col">
-                    {i > 0 && (
-                      <input
-                        type="checkbox"
-                        aria-label="Bot"
-                        checked={p.isBot}
-                        onChange={() => toggleBot(i)}
-                      />
-                    )}
-                  </div>
-                  <div className="remove-col">
+                  <div className="name-col">
+                    <input
+                      className="input"
+                      value={p.name}
+                      placeholder={placeholder}
+                      onChange={(e) => updateName(i, e.target.value)}
+                    />
                     {i >= 2 && (
                       <button
                         className="btn btn-danger btn-x"
@@ -242,6 +231,16 @@ export default function Lobby({ onStart, onBack, authed, user }) {
                       >
                         ×
                       </button>
+                    )}
+                  </div>
+                  <div className="bot-col">
+                    {i > 0 && (
+                      <input
+                        type="checkbox"
+                        aria-label="Bot"
+                        checked={p.isBot}
+                        onChange={() => toggleBot(i)}
+                      />
                     )}
                   </div>
                 </div>

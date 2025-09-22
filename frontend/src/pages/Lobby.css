@@ -3,25 +3,38 @@
   gap: 10px;
 }
 .player-row {
-  display: grid;
-  /* Fixed action columns ensure consistent input width across rows */
-  grid-template-columns: minmax(0, 1fr) 72px 96px;
+  display: flex;
   gap: 8px;
   align-items: center;
+}
+.player-row .name-col {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.player-row .name-col .btn-x {
+  flex-shrink: 0;
 }
 .player-row .input {
   width: 100%;
   min-width: 0;
+  flex: 1;
 }
-.player-row .bot-col,
-.player-row .remove-col {
-  justify-self: end;
+.player-row .bot-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
 }
 
 /* Header row styling for column titles */
 .player-header {
   font-weight: 700;
   color: var(--text);
+}
+.player-header .name-col {
+  gap: 0;
 }
 .lobby-actions {
   display: flex;
