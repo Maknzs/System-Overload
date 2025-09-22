@@ -187,17 +187,20 @@ export default function Lobby({ onStart, onBack, authed, user }) {
             browser.
           </p>
           <div className="marketing-cta">
+            {!authed && (
+              <button
+                className="btn btn-accent"
+                onClick={() => nav("/register")}
+              >
+                Create an account to track your progress
+              </button>
+            )}
             <button
               className="btn btn-ghost"
               onClick={() => (authed ? onBack() : nav("/login"))}
             >
               {authed ? "View Profile" : "Login"}
             </button>
-            {!authed && (
-              <button className="btn btn-link" onClick={() => nav("/register")}>
-                Create an account to track your progress
-              </button>
-            )}
           </div>
         </section>
 
