@@ -4,14 +4,9 @@
   width: 100%; /* overall footprint */
   min-height: 275px;
   padding: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04),
-    rgba(255, 255, 255, 0.02)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  background: none;
+  border: 0;
+  box-shadow: none;
   cursor: default;
   overflow: hidden;
   --gap: 55px;
@@ -30,7 +25,7 @@
 .discard__stack {
   position: relative;
   width: 100%; /* use all the available width */
-  height: 180px; /* match deck card height */
+  height: var(--card-discard-h); /* match card height */
   margin-top: 0;
   margin-left: -15px;
 }
@@ -39,15 +34,13 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 130px;  /* match deck card width */
-  height: 180px; /* match deck card height */
-  border-radius: 14px; /* match deck card radius */
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  --card-scale: var(--card-discard-scale, 1);
+  width: var(--card-discard-w);  /* match canonical card width */
+  height: var(--card-discard-h); /* match canonical card height */
+  border-radius: var(--card-radius);
   transform: translateX(calc(var(--i) * -55px)) rotate(calc(var(--i) * -0.8deg));
   z-index: calc(20 - var(--i)); /* NEW: newest (i=0) on top */
-  background: rgba(255, 255, 255, 0.03);
+  background: none;
   transition: transform 0.15s ease, filter 0.16s ease;
 }
 .discard__card:hover {
@@ -57,8 +50,10 @@
 .discard__card img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  border-radius: inherit;
+  box-shadow: var(--card-shadow);
 }
 
 /* Fallback tile when no image mapping found */

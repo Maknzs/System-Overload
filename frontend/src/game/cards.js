@@ -103,6 +103,22 @@ export const CARD_IMG = {
   [CARD.COFFEE]: fuel,
 };
 
+// Preload all card images to avoid flicker when flipping to a face
+const __preloaded = new Set();
+export function preloadCardImages() {
+  try {
+    Object.values(CARD_IMG).forEach((src) => {
+      if (!src || __preloaded.has(src)) return;
+      const img = new Image();
+      // Hint for earlier decode on some browsers
+      try { img.decoding = 'async'; } catch {}
+      try { img.loading = 'eager'; } catch {}
+      img.src = src;
+      __preloaded.add(src);
+    });
+  } catch {}
+}
+
 // Descriptive text for each card's effect
 export const CARD_DESC = {
   [CARD.FATAL]: "If drawn without a Reboot, you are knocked out of the game",

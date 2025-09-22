@@ -15,36 +15,43 @@ export default function Card({
   style,
 }) {
   // Intrinsic dimension hints to reduce layout shift and speed decode
-  const dims =
-    size === "deck"
-      ? { width: 170, height: 230 }
-      : size === "discard"
-      ? { width: 130, height: 180 }
-      : { width: 130, height: 180 }; // default to hand size
-  const imgSrc = faceDown
-    ? STOCK_CARD_IMG
-    : src || CARD_IMG[name] || STOCK_CARD_IMG;
+
+  const frontSrc = src || CARD_IMG[name] || STOCK_CARD_IMG;
+  const backSrc = STOCK_CARD_IMG;
 
   const isDisabled = disabled || (faceDown && !allowClickWhenFaceDown);
   const handleClick = isDisabled ? onDisabledClick : onClick;
+  const label = faceDown ? "Hidden card" : title || name;
+
+  const className = [
+    "ui-card",
+    `card--${size}`,
+    isDisabled ? "is-disabled" : null,
+    faceDown ? "is-face-down" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
       type="button"
-      className={`ui-card card--${size}${isDisabled ? " is-disabled" : ""}`}
+      className={className}
       data-card={name}
       onClick={handleClick}
       // hide the real card name when face-down
-      title={faceDown ? "Hidden card" : title || name}
-      aria-label={faceDown ? "Hidden card" : title || name}
+      title={label}
+      aria-label={label}
       style={style}
     >
-      <img
-        src={imgSrc}
-        alt={faceDown ? "Hidden card" : name}
-        decoding="async"
-        {...dims}
-      />
+      {
+        <img
+          src={faceDown ? backSrc : frontSrc}
+          alt={label}
+          decoding="async"
+          width={130}
+          height={175}
+        />
+      }
     </button>
   );
 }

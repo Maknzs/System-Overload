@@ -3,12 +3,25 @@
   gap: 10px;
 }
 .player-row {
-  display: flex;
+  display: grid;
+  /* Fixed action columns ensure consistent input width across rows */
+  grid-template-columns: minmax(0, 1fr) 72px 96px;
   gap: 8px;
   align-items: center;
 }
 .player-row .input {
-  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.player-row .bot-col,
+.player-row .remove-col {
+  justify-self: end;
+}
+
+/* Header row styling for column titles */
+.player-header {
+  font-weight: 700;
+  color: var(--text);
 }
 .lobby-actions {
   display: flex;
@@ -24,4 +37,51 @@
 }
 .feedback-form textarea.input {
   min-height: 80px;
+}
+
+/* Fun X remove button */
+.btn-x {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(255, 0, 0, 0.25);
+}
+.btn-x:hover {
+  animation: btn-x-wiggle 0.6s ease-in-out infinite alternate;
+  box-shadow: 0 6px 22px rgba(255, 0, 0, 0.35);
+}
+.btn-x:active {
+  transform: scale(1.15) rotate(-8deg);
+}
+
+@keyframes btn-x-wiggle {
+  0% {
+    transform: rotate(0deg) translate(0, 0) scale(1);
+  }
+  25% {
+    transform: rotate(12deg) translate(1px, -1px) scale(1.05);
+  }
+  50% {
+    transform: rotate(-10deg) translate(-1px, 1px) scale(0.98);
+  }
+  75% {
+    transform: rotate(14deg) translate(1px, 1px) scale(1.08);
+  }
+  100% {
+    transform: rotate(-12deg) translate(-1px, -1px) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-x:hover,
+  .btn-x:active {
+    animation: none;
+    transform: none;
+  }
 }

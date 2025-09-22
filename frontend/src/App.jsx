@@ -7,6 +7,7 @@ import Game from "./pages/Game.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import { api } from "./api"; // fetch helper (now includes credentials for cookies)
+import { isDevUiEnabled, APP_PHASE } from "./config";
 
 export default function App() {
   const nav = useNavigate();
@@ -37,7 +38,9 @@ export default function App() {
       if (!expMs || expMs < Date.now()) throw new Error("expired");
       // Looks fine; let /auth/me validate server-side
     } catch (_) {
-      try { localStorage.removeItem("token"); } catch {}
+      try {
+        localStorage.removeItem("token");
+      } catch {}
       setToken("");
       setUser(null);
       nav("/login");
@@ -56,7 +59,9 @@ export default function App() {
         try {
           const sess = await api("/better-auth/session");
           if (ignore) return;
-          const u = (sess && (sess.user || (sess.session && sess.session.user))) || null;
+          const u =
+            (sess && (sess.user || (sess.session && sess.session.user))) ||
+            null;
           if (u) {
             setUser({
               email: u.email,
@@ -70,9 +75,13 @@ export default function App() {
         }
         if (!ignore) {
           const msg = String(e && e.message ? e.message : "");
-          const authError = /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
+          const authError =
+            /HTTP\s*401/.test(msg) || /Invalid or expired token/i.test(msg);
           if (authError) {
-            try { localStorage.removeItem("token"); } catch {}
+            // Proactively clear storage to satisfy immediate checks in E2E
+            try {
+              localStorage.removeItem("token");
+            } catch {}
             setToken("");
             setUser(null);
             nav("/login");
@@ -108,78 +117,128 @@ export default function App() {
     nav("/login");
   }, [nav]);
 
-  return (
-    <Routes>
-      {/* Root is the Lobby (public) */}
-      <Route
-        path="/"
-        element={
-          <Lobby
-            authed={authed}
-            user={user}
-            onStart={(players) => {
-              const names = players.map((p) => p.name);
-              nav("/game", { state: { names } });
-            }}
-            onBack={() => nav("/profile")}
-          />
-        }
-      />
+  // small wrappers so we can pass callbacks that navigate
+  const MenuScreen = () => (
+    <Menu user={user} onStart={() => nav("/lobby")} onLogout={handleLogout} />
+  );
 
-      {/* Profile (formerly at "/"): protected */}
-      <Route
-        path="/profile"
-        element={
-          authed ? (
-            user ? (
-              <Menu
-                user={user}
-                onStart={() => nav("/")}
-                onLogout={handleLogout}
-                onUserUpdate={setUser}
-              />
+  const LobbyScreen = () => (
+    <Lobby
+      onStart={(players) => {
+        // Pass full player objects, including isBot flags
+        nav("/game", { state: { players } });
+      }}
+      onBack={() => nav("/")}
+    />
+  );
+
+  const LoginScreen = () => (
+    <Login
+      onLogin={handleLogin}
+      goRegister={() => nav("/register")}
+      goGuest={handleGuest}
+    />
+  );
+
+  const RegisterScreen = () => (
+    <Register
+      goLogin={() => nav("/login")}
+      onRegistered={() => nav("/login")}
+    />
+  );
+
+  const devEnabled = isDevUiEnabled();
+
+  return (
+    <>
+      {devEnabled && (
+        <div
+          style={{
+            position: "fixed",
+            top: 8,
+            right: 8,
+            background: "#1f2937",
+            color: "#fff",
+            padding: "4px 8px",
+            borderRadius: 6,
+            fontSize: 12,
+            zIndex: 1000,
+            opacity: 0.9,
+          }}
+          title={`Phase: ${APP_PHASE}`}
+        >
+          DEV
+        </div>
+      )}
+      <Routes>
+        {/* Root is the Lobby (public) */}
+        <Route
+          path="/"
+          element={
+            <Lobby
+              authed={authed}
+              user={user}
+              onStart={(players) => {
+                // Preserve isBot flags and names so Game can identify bots
+                nav("/game", { state: { players } });
+              }}
+              onBack={() => nav("/profile")}
+            />
+          }
+        />
+
+        {/* Profile (formerly at "/"): protected */}
+        <Route
+          path="/profile"
+          element={
+            authed ? (
+              user ? (
+                <Menu
+                  user={user}
+                  onStart={() => nav("/")}
+                  onLogout={handleLogout}
+                  onUserUpdate={setUser}
+                />
+              ) : (
+                <div style={{ padding: 16 }}>Loading…</div>
+              )
             ) : (
-              <div style={{ padding: 16 }}>Loading…</div>
+              <Navigate to="/login" replace />
             )
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      {/* Back-compat: send old /lobby to root */}
-      <Route path="/lobby" element={<Navigate to="/" replace />} />
-      <Route
-        path="/game"
-        element={<Game />}
-      />
-      <Route
-        path="/login"
-        element={
-          authed ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Login
-              onLogin={handleLogin}
-              goRegister={() => nav("/register")}
-              goBack={() => nav("/")}
-            />
-          )
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          authed ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Register
-              goLogin={() => nav("/login")}
-              onRegistered={() => nav("/")}
-            />
-          )
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          }
+        />
+        {/* Back-compat: send old /lobby to root */}
+        <Route path="/lobby" element={<Navigate to="/" replace />} />
+        <Route path="/game" element={<Game />} />
+        <Route
+          path="/login"
+          element={
+            authed ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Login
+                onLogin={handleLogin}
+                goRegister={() => nav("/register")}
+                goBack={() => nav("/")}
+              />
+            )
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            authed ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Register
+                goLogin={() => nav("/login")}
+                onRegistered={() => nav("/")}
+              />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

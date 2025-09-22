@@ -200,7 +200,7 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
 
       <div className="actions" style={{ marginBottom: 16 }}>
         <button className="btn btn-accent" onClick={onStart}>
-          Start New Local Game
+          Start Hotseat Game
         </button>
         <button className="btn btn-ghost" onClick={onLogout}>
           Logout

@@ -41,7 +41,6 @@
   color: var(--text);
   font-size: 50px;
   font-weight: 700;
-  margin: 0 0 10px;
 }
 /* Health Check modal card numbering */
 .peek-card {
@@ -68,4 +67,136 @@
   position: absolute;
   top: 0;
   left: calc(var(--stack-index) * var(--stack-spacing, 20px));
+}
+
+/* Draw animation: deck -> modal */
+.fly-card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+  perspective: 800px;
+  transition: transform var(--dur-fly);
+  /* Layer above the backdrop; modal shows after arrival */
+  z-index: 70;
+  pointer-events: none;
+  /* Reduce flicker during compositing with backdrop-filter */
+  will-change: transform;
+  transform: translateZ(0);
+  opacity: 1;
+}
+.fly-card__inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-flip) var(--ease-emph);
+  will-change: transform;
+  transform: translateZ(0);
+}
+.fly-card__face {
+  position: absolute;
+  inset: 0; /* fill the container */
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  backface-visibility: hidden;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  will-change: transform, opacity;
+}
+.fly-card__face.face--front {
+  /* Drawn card overlay: reduce radius by 10px */
+  border-radius: var(--card-radius);
+  /* Sizing is driven by the parent inset; keep defaults */
+}
+.face--front {
+  transform: rotateY(180deg);
+}
+.fly-card.is-running .fly-card__inner {
+  transform: rotateY(180deg);
+}
+
+.fly-card.is-closing {
+  opacity: 1;
+}
+
+/* Modal layout helpers for large card + description */
+.modal-card {
+  margin: 0 0 16px;
+  border-radius: var(--card-radius);
+}
+
+.modal-desc {
+  margin: 0;
+}
+
+/* Drawn card modal: match flip animation radius */
+.drawn-modal-card .ui-card img {
+  border-radius: var(--card-radius);
+}
+
+/* Fatal modal: in-place flip card (back <-> front) */
+.flip-card {
+  position: relative;
+  width: var(--card-modal-w);
+  height: var(--card-modal-h);
+  perspective: 800px;
+}
+.flip-card__inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-flip) var(--ease-emph);
+}
+.flip-card__face {
+  position: absolute;
+  inset: 0; /* fill the container */
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  backface-visibility: hidden;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.flip-card__face.face--front {
+  /* Match overlay front-face radius adjustments */
+  border-radius: var(--card-radius);
+  /* Sizing is driven by the parent inset; keep defaults */
+}
+.flip-card.is-flipped .flip-card__inner {
+  transform: rotateY(180deg);
+}
+
+/* Reboot cover overlay: slightly askew to reveal Fatal underneath */
+.reboot-cover {
+  position: absolute;
+  top: -8px;
+  left: 18px;
+  width: var(--card-modal-w);
+  height: var(--card-modal-h);
+  transform: rotate(-6deg) scale(0.985);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  pointer-events: none; /* purely decorative */
+}
+
+.reboot-cover.animate-in {
+  animation: rebootSlideIn var(--dur-reboot) var(--ease-emph) both;
+}
+
+@keyframes rebootSlideIn {
+  0% {
+    transform: translateX(120vw) rotate(-12deg) scale(0.98);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(-8px) rotate(-7.25deg) scale(0.985);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) rotate(-6deg) scale(0.985);
+    opacity: 1;
+  }
 }

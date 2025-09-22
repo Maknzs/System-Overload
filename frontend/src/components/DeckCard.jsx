@@ -1,7 +1,7 @@
 import "./DeckCard.css";
 import deckBack from "../assets/cards/SystemOverload.webp"; // put an image here
 
-export default function DeckCard({ count = 0, onClick, disabled }) {
+export default function DeckCard({ count = 0, onClick, disabled, anchorRef }) {
   const label = `Deck (${count} ${count === 1 ? "card" : "cards"} remaining)`;
   return (
     <button
@@ -11,6 +11,7 @@ export default function DeckCard({ count = 0, onClick, disabled }) {
       disabled={disabled}
       aria-label={label}
       title={label}
+      ref={anchorRef}
     >
       <img
         className="deckcard__img"
@@ -18,7 +19,7 @@ export default function DeckCard({ count = 0, onClick, disabled }) {
         alt="Deck back"
         decoding="async"
         width={130}
-        height={180}
+        height={175}
       />
     </button>
   );

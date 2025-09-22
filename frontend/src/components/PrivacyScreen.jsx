@@ -2,7 +2,12 @@ import { useEffect } from "react";
 import Button from "./Button";
 import "./PrivacyScreen.css";
 
-export default function PrivacyScreen({ show, playerName, onContinue }) {
+export default function PrivacyScreen({
+  show,
+  playerName,
+  turnsToTake,
+  onContinue,
+}) {
   useEffect(() => {
     if (!show) return;
     const onKey = (e) => (e.key === "Enter" ? onContinue?.() : undefined);
@@ -23,6 +28,12 @@ export default function PrivacyScreen({ show, playerName, onContinue }) {
         <div>
           It’s <span className="ps-name">{playerName}</span>’s turn.
         </div>
+        {typeof turnsToTake === "number" && turnsToTake > 0 && (
+          <div className="ps-hint" style={{ marginTop: 6 }}>
+            You have {turnsToTake} {turnsToTake === 1 ? "turn" : "turns"} to
+            take.
+          </div>
+        )}
         <div className="ps-hint">
           Press <b>Enter</b> or click continue.
         </div>
