@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const Feedback = require('../models/Feedback');
 let nodemailer;
 try {
   nodemailer = require('nodemailer');
@@ -82,19 +83,48 @@ router.post(
     }
 
     const { email, message, players = [] } = req.body || {};
+    const sanitizedEmail = email && typeof email === 'string' ? email.trim() : undefined;
+    const sanitizedMessage = typeof message === 'string' ? message.trim() : '';
+    const sanitizedPlayers = Array.isArray(players)
+      ? players
+          .map((p) => (typeof p === 'string' ? p.trim() : String(p).trim()))
+          .filter((p) => p.length > 0)
+      : [];
+
+    let saved;
+    try {
+      saved = await Feedback.create({
+        email: sanitizedEmail,
+        message: sanitizedMessage,
+        players: sanitizedPlayers,
+        meta: {
+          ip: req.ip,
+          userAgent: req.get('user-agent') || '',
+        },
+      });
+    } catch (err) {
+      console.error('Feedback save failed', err);
+      return res.status(500).json({
+        ok: false,
+        error: { code: 'PERSISTENCE_FAILED', message: 'Could not save feedback' },
+      });
+    }
+
     const to = process.env.MAIL_TO || process.env.FEEDBACK_TO_EMAIL || '';
     const from = process.env.MAIL_FROM || 'no-reply@system-overload.local';
-    const replyTo = email && typeof email === 'string' ? email : undefined;
+    const replyTo = sanitizedEmail;
 
     const subject = `[SystemOverload] New Feedback${process.env.NODE_ENV ? ' (' + process.env.NODE_ENV + ')' : ''}`;
     const plain = [
       `New feedback received at ${new Date().toISOString()}`,
       '',
-      email ? `From: ${email}` : 'From: (not provided)',
-      players && players.length ? `Players: ${players.join(', ')}` : 'Players: (none provided)',
+      sanitizedEmail ? `From: ${sanitizedEmail}` : 'From: (not provided)',
+      sanitizedPlayers && sanitizedPlayers.length
+        ? `Players: ${sanitizedPlayers.join(', ')}`
+        : 'Players: (none provided)',
       '',
       'Message:',
-      message,
+      sanitizedMessage,
       '',
       `IP: ${req.ip}`,
       `UA: ${req.get('user-agent') || ''}`,
@@ -103,10 +133,10 @@ router.post(
     const html = `
       <div>
         <p><strong>New feedback received:</strong> ${new Date().toISOString()}</p>
-        <p><strong>From:</strong> ${email ? email : '(not provided)'}<br/>
-           <strong>Players:</strong> ${players && players.length ? players.map(p => String(p)).join(', ') : '(none provided)'}
+        <p><strong>From:</strong> ${sanitizedEmail ? sanitizedEmail : '(not provided)'}<br/>
+           <strong>Players:</strong> ${sanitizedPlayers && sanitizedPlayers.length ? sanitizedPlayers.map(p => String(p)).join(', ') : '(none provided)'}
         </p>
-        <p><strong>Message:</strong><br/>${String(message).replace(/\n/g, '<br/>')}</p>
+        <p><strong>Message:</strong><br/>${String(sanitizedMessage).replace(/\n/g, '<br/>')}</p>
         <hr/>
         <p style="color:#666;"><strong>IP:</strong> ${req.ip} &nbsp; <strong>UA:</strong> ${req.get('user-agent') || ''}</p>
       </div>`;
@@ -142,7 +172,17 @@ router.post(
               : 'SMTP failed; message logged instead.'))
       : undefined;
 
-    return res.json({ ok: true, id: info && info.messageId ? info.messageId : undefined, hint });
+    return res.json({
+      ok: true,
+      id: info && info.messageId ? info.messageId : undefined,
+      hint,
+      feedback: saved
+        ? {
+            id: saved.id,
+            createdAt: saved.createdAt,
+          }
+        : undefined,
+    });
   }
 );
 

@@ -18,7 +18,7 @@ describe('Accessibility checks', () => {
   });
 
   it('Register has no obvious a11y violations', async () => {
-    const { container } = render(<Register goLogin={() => {}} />);
+    const { container } = render(<Register goLogin={() => {}} goBack={() => {}} />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

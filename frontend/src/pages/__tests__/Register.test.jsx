@@ -17,7 +17,7 @@ describe('Register page', () => {
       if (path === '/auth/register' && opts.method === 'POST') return { ok: true };
       return { ok: true };
     });
-    render(<Register goLogin={goLogin} onRegistered={onRegistered} />);
+    render(<Register goLogin={goLogin} onRegistered={onRegistered} goBack={() => {}} />);
 
     await userEvent.type(screen.getByPlaceholderText(/email/i), 'x@example.com');
     await userEvent.type(screen.getByPlaceholderText(/username/i), 'alice');
@@ -38,7 +38,7 @@ describe('Register page', () => {
 
   it('shows error on failure', async () => {
     api.mockRejectedValue(new Error('Email in use'));
-    render(<Register goLogin={() => {}} />);
+    render(<Register goLogin={() => {}} goBack={() => {}} />);
     await userEvent.type(screen.getByPlaceholderText(/email/i), 'x@example.com');
     await userEvent.type(screen.getByPlaceholderText(/username/i), 'alice');
     await userEvent.type(screen.getByPlaceholderText(/^password$/i), 'Password1!');
@@ -48,8 +48,15 @@ describe('Register page', () => {
 
   it('Back to login button calls goLogin', async () => {
     const goLogin = vi.fn();
-    render(<Register goLogin={goLogin} />);
+    render(<Register goLogin={goLogin} goBack={() => {}} />);
     await userEvent.click(screen.getByRole('button', { name: /back to login/i }));
     expect(goLogin).toHaveBeenCalled();
+  });
+
+  it('Back to lobby button calls goBack', async () => {
+    const goBack = vi.fn();
+    render(<Register goLogin={() => {}} goBack={goBack} />);
+    await userEvent.click(screen.getByRole('button', { name: /back to lobby/i }));
+    expect(goBack).toHaveBeenCalled();
   });
 });

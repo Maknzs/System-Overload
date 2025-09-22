@@ -21,3 +21,21 @@ export function isDevUiEnabled() {
   return IS_DEV_PHASE;
 }
 
+export function getPublicBaseUrl() {
+  try {
+    const envUrl =
+      typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      (import.meta.env.VITE_PUBLIC_BASE_URL || import.meta.env.BASE_URL);
+    if (envUrl) {
+      const trimmed = String(envUrl).trim();
+      if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed.replace(/\/$/, '');
+      }
+    }
+  } catch {}
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  return 'https://system-overload.com';
+}

@@ -257,6 +257,7 @@ export default function App() {
             ) : (
               <Register
                 goLogin={() => nav("/login")}
+                goBack={() => nav("/")}
                 onRegistered={(t, u) => {
                   if (t && u) handleLogin(t, u);
                   else nav("/login");

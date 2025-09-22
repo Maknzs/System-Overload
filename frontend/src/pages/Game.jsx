@@ -27,6 +27,7 @@ import {
 import "./Game.css"; // page styles (section boxes, layout, log, etc.)
 import { isDevUiEnabled } from "../config";
 import deckBack from "../assets/cards/SystemOverload.webp";
+import Seo from "../components/Seo.jsx";
 
 const PHASE = {
   AWAIT_ACTION: "AWAIT_ACTION",
@@ -1271,7 +1272,14 @@ export default function Game() {
   };
 
   return (
-    <div className="page">
+    <>
+      <Seo
+        title="Match In Progress"
+        description="Watch the action unfold in a System Overload match. Chain combos, dodge fatal exploits, and outsmart rival hackers in real time."
+        canonicalPath="/game"
+        noindex
+      />
+      <div className="page">
       <h1 className="page-header">System-Overload</h1>
 
       {/* Meta pills */}
@@ -1288,9 +1296,9 @@ export default function Game() {
           </span>
         </span>
         <span
-          className="pill"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-        >
+            className="pill"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
           <span style={{ fontWeight: 700 }}>Pro</span>
           <Button
             type="button"
@@ -2411,5 +2419,6 @@ export default function Game() {
         })()}
       </div>
     </div>
+    </>
   );
 }

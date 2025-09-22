@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
 import "./Menu.css";
+import Seo from "../components/Seo.jsx";
 
 // Map API errors to clear, user-friendly messages
 function humanizeAccountError(kind, err) {
@@ -188,6 +189,13 @@ export default function Menu({ user, onStart, onLogout, onUserUpdate }) {
   }
   return (
     <div className="page menu-page">
+      <Seo
+        title="Player Profile"
+        description="Manage your System Overload account details, review match history, and queue up for your next strategy showdown."
+        canonicalPath="/profile"
+        keywords={["system overload profile", "account settings", "multiplayer stats"]}
+        noindex
+      />
       <h1 className="page-header">Profile</h1>
 
       {

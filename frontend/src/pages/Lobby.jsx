@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Lobby.css";
 import { api } from "../api";
+import Seo from "../components/Seo.jsx";
 
 // Allows up to 5 total participants. Each row can be Human or Bot.
 export default function Lobby({ onStart, onBack, authed, user }) {
@@ -148,147 +149,190 @@ export default function Lobby({ onStart, onBack, authed, user }) {
     }
   };
 
-  return (
-    <div className="page">
-      <h1 className="page-header">Lobby</h1>
+  const marketingSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      name: "System Overload",
+      applicationCategory: "Game",
+      operatingSystem: "Web",
+      url: "https://system-overload.com/",
+      description:
+        "System Overload is a fast-paced multiplayer strategy card game where you orchestrate human allies and clever bots to claim victory.",
+      genre: ["Strategy", "Multiplayer", "Card Game"],
+      playMode: "MultiPlayer",
+    }),
+    []
+  );
 
-      <div className="card">
-        <div className="lobby-grid">
-          <div className="player-row player-header">
-            <div>
-              <div className="section-title">Player Names</div>
-            </div>
-            <div className="bot-col">Bot?</div>
-            <div className="remove-col"></div>
+  return (
+    <>
+      <Seo
+        title="Multiplayer Lobby"
+        description="Assemble your squad of friends and AI bots in the System Overload lobby, tune your lineup, and jump straight into competitive matches."
+        canonicalPath="/"
+        keywords={["system overload", "multiplayer", "card game", "lobby"]}
+        schema={marketingSchema}
+      />
+      <div className="page">
+        <h1 className="page-header">Lobby</h1>
+
+        <section className="card marketing-card">
+          <h2>Build The Perfect Squad</h2>
+          <p>
+            System Overload blends fast tactical decisions with the thrill of
+            multiplayer co-op. Draft human allies or elite bot partners,
+            experiment with lineups, and tackle escalating encounters that
+            reward smart coordination. No downloads, just instant action in your
+            browser.
+          </p>
+          <div className="marketing-cta">
+            <button
+              className="btn btn-ghost"
+              onClick={() => (authed ? onBack() : nav("/login"))}
+            >
+              {authed ? "View Profile" : "Login"}
+            </button>
+            {!authed && (
+              <button className="btn btn-link" onClick={() => nav("/register")}>
+                Create an account to track your progress
+              </button>
+            )}
           </div>
-          {players.map((p, i) => {
-            // Determine placeholder using the first unused default bot name
-            const botPlaceholder = getBotNameForIndex(i, players);
-            const placeholder = p.isBot ? botPlaceholder : `Human #${i + 1}`;
-            return (
-              <div className="player-row" key={i}>
+        </section>
+
+        <div className="card">
+          <div className="lobby-grid">
+            <div className="player-row player-header">
+              <div>
+                <div className="section-title">Player Names</div>
+              </div>
+              <div className="bot-col">Bot?</div>
+              <div className="remove-col"></div>
+            </div>
+            {players.map((p, i) => {
+              // Determine placeholder using the first unused default bot name
+              const botPlaceholder = getBotNameForIndex(i, players);
+              const placeholder = p.isBot ? botPlaceholder : `Human #${i + 1}`;
+              return (
+                <div className="player-row" key={i}>
+                  <input
+                    className="input"
+                    value={p.name}
+                    placeholder={placeholder}
+                    onChange={(e) => updateName(i, e.target.value)}
+                  />
+                  <div className="bot-col">
+                    {i > 0 && (
+                      <input
+                        type="checkbox"
+                        aria-label="Bot"
+                        checked={p.isBot}
+                        onChange={() => toggleBot(i)}
+                      />
+                    )}
+                  </div>
+                  <div className="remove-col">
+                    {i >= 2 && (
+                      <button
+                        className="btn btn-danger btn-x"
+                        aria-label="Remove player"
+                        title="Remove player"
+                        onClick={() => removePlayer(i)}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="lobby-actions">
+            <button
+              className="btn btn-accent"
+              onClick={start}
+              disabled={!(players[0]?.name || "").trim()}
+            >
+              Launch Match
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => addPlayer(false)}
+              disabled={players.length >= 5}
+            >
+              Add Player
+            </button>
+          </div>
+        </div>
+        {/* Feedback section (toggle like profile settings)*/}
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="hstack" style={{ justifyContent: "space-between" }}>
+            <div className="section-title" style={{ fontSize: 18 }}>
+              Comments / Suggestions
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setShowFeedback((v) => {
+                  const nv = !v;
+                  if (!nv) {
+                    setFbEmail("");
+                    setFbMsg("");
+                    setFbError("");
+                    setFbStatus("idle");
+                  }
+                  return nv;
+                });
+              }}
+            >
+              {showFeedback ? "Cancel" : "Leave Feedback"}
+            </button>
+          </div>
+          {showFeedback && (
+            <form onSubmit={submitFeedback} className="feedback-form">
+              <div className="player-row">
                 <input
                   className="input"
-                  value={p.name}
-                  placeholder={placeholder}
-                  onChange={(e) => updateName(i, e.target.value)}
+                  type="email"
+                  value={fbEmail}
+                  placeholder="Your email (optional)"
+                  onChange={(e) => setFbEmail(e.target.value)}
                 />
-                <div className="bot-col">
-                  {i > 0 && (
-                    <input
-                      type="checkbox"
-                      aria-label="Bot"
-                      checked={p.isBot}
-                      onChange={() => toggleBot(i)}
-                    />
-                  )}
-                </div>
-                <div className="remove-col">
-                  {i >= 2 && (
-                    <button
-                      className="btn btn-danger btn-x"
-                      aria-label="Remove player"
-                      title="Remove player"
-                      onClick={() => removePlayer(i)}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
               </div>
-            );
-          })}
-        </div>
-        <div className="lobby-actions">
-          <button
-            className="btn btn-accent"
-            onClick={start}
-            disabled={!(players[0]?.name || "").trim()}
-          >
-            Start Game
-          </button>
-          <button
-            className="btn btn-ghost"
-            onClick={() => addPlayer(false)}
-            disabled={players.length >= 5}
-          >
-            Add Player
-          </button>
-          <button
-            className="btn btn-ghost"
-            onClick={() => (authed ? onBack() : nav("/login"))}
-          >
-            {authed ? "View Profile" : "Login / Register"}
-          </button>
+              <div className="player-row">
+                <textarea
+                  className="input"
+                  value={fbMsg}
+                  placeholder="Share a comment or suggestion..."
+                  rows={3}
+                  onChange={(e) => setFbMsg(e.target.value)}
+                />
+              </div>
+              {fbError && (
+                <div className="card-disc" style={{ color: "var(--warning)" }}>
+                  {fbError}
+                </div>
+              )}
+              {fbStatus === "success" && (
+                <div className="card-disc" style={{ color: "var(--success)" }}>
+                  Thanks! Your feedback was sent.
+                </div>
+              )}
+              <div className="lobby-actions" style={{ marginTop: 6 }}>
+                <button
+                  className="btn btn-ghost"
+                  type="submit"
+                  disabled={fbStatus === "sending"}
+                >
+                  {fbStatus === "sending" ? "Sending..." : "Send Feedback"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
-      {/* Feedback section (toggle like profile settings)
-      <div className="card" style={{ marginTop: 14 }}>
-        <div className="hstack" style={{ justifyContent: "space-between" }}>
-          <div className="section-title" style={{ fontSize: 18 }}>
-            Comments / Suggestions
-          </div>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              setShowFeedback((v) => {
-                const nv = !v;
-                if (!nv) {
-                  setFbEmail("");
-                  setFbMsg("");
-                  setFbError("");
-                  setFbStatus("idle");
-                }
-                return nv;
-              });
-            }}
-          >
-            {showFeedback ? "Cancel" : "Leave Feedback"}
-          </button>
-        </div>
-        {showFeedback && (
-          <form onSubmit={submitFeedback} className="feedback-form">
-            <div className="player-row">
-              <input
-                className="input"
-                type="email"
-                value={fbEmail}
-                placeholder="Your email (optional)"
-                onChange={(e) => setFbEmail(e.target.value)}
-              />
-            </div>
-            <div className="player-row">
-              <textarea
-                className="input"
-                value={fbMsg}
-                placeholder="Share a comment or suggestion..."
-                rows={3}
-                onChange={(e) => setFbMsg(e.target.value)}
-              />
-            </div>
-            {fbError && (
-              <div className="card-disc" style={{ color: "var(--warning)" }}>
-                {fbError}
-              </div>
-            )}
-            {fbStatus === "success" && (
-              <div className="card-disc" style={{ color: "var(--success)" }}>
-                Thanks! Your feedback was sent.
-              </div>
-            )}
-            <div className="lobby-actions" style={{ marginTop: 6 }}>
-              <button
-                className="btn btn-ghost"
-                type="submit"
-                disabled={fbStatus === "sending"}
-              >
-                {fbStatus === "sending" ? "Sending..." : "Send Feedback"}
-              </button>
-            </div>
-          </form>
-        )}
-      </div> */}
-    </div>
+    </>
   );
 }

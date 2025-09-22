@@ -4,6 +4,13 @@
   display: grid;
   gap: 12px;
 }
+.auth-intro {
+  max-width: 640px;
+  margin: 0 auto 16px auto;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.65;
+  text-align: center;
+}
 .auth-actions {
   display: flex;
   gap: 10px;

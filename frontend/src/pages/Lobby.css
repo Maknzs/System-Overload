@@ -85,3 +85,34 @@
     transform: none;
   }
 }
+
+.marketing-card {
+  margin-bottom: 20px;
+  display: grid;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(236, 72, 153, 0.08));
+  border: 1px solid rgba(236, 72, 153, 0.35);
+}
+
+.marketing-card h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.marketing-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+}
+
+.marketing-cta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.marketing-cta .btn-link {
+  color: var(--accent);
+}

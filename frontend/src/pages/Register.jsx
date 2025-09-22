@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { api } from "../api";
 import "./Register.css";
+import Seo from "../components/Seo.jsx";
 
-export default function Register({ goLogin, onRegistered }) {
+export default function Register({ onRegistered, goBack }) {
   const [email, setEmail] = useState("");
   const [username, setUser] = useState("");
   const [password, setPw] = useState("");
@@ -35,8 +36,19 @@ export default function Register({ goLogin, onRegistered }) {
       } catch (e) {
         // If the server reported a specific conflict, surface it and stop
         const code = e?.code || e?.body?.error?.code;
-        if (e?.status === 409 && (code === "EMAIL_EXISTS" || code === "USERNAME_EXISTS" || code === "ACCOUNT_EXISTS")) {
-          setErr(code === "USERNAME_EXISTS" ? "Username taken" : code === "EMAIL_EXISTS" ? "Account with Email already exists" : "Email or username already in use");
+        if (
+          e?.status === 409 &&
+          (code === "EMAIL_EXISTS" ||
+            code === "USERNAME_EXISTS" ||
+            code === "ACCOUNT_EXISTS")
+        ) {
+          setErr(
+            code === "USERNAME_EXISTS"
+              ? "Username taken"
+              : code === "EMAIL_EXISTS"
+              ? "Account with Email already exists"
+              : "Email or username already in use"
+          );
           setLoading(false);
           return;
         }
@@ -86,62 +98,91 @@ export default function Register({ goLogin, onRegistered }) {
   }
 
   return (
-    <div className="page">
-      <h1 className="page-header">Register</h1>
-      <form className="card auth-box" onSubmit={submit}>
-        {ok && (
-        <p style={{ color: "var(--success)", marginTop: 10, textAlign: "center"  }}>
-          Account created!
+    <>
+      <Seo
+        title="Create Your Account"
+        description="Register for System Overload to unlock ranked matchmaking, save your favorite bot lineups, and sync progress across devices."
+        canonicalPath="/register"
+        keywords={[
+          "system overload register",
+          "multiplayer game signup",
+          "strategy card game account",
+        ]}
+      />
+      <div className="page">
+        <h1 className="page-header">Register</h1>
+        <p className="auth-intro">
+          Claim your handle, track match history, and earn cosmetics by creating
+          a free System Overload account. You can join public lobbies instantly
+          and invite friends with a single link.
         </p>
-      )}
-        {err && (
-        <p style={{ color: "var(--danger)", marginTop: 10, textAlign: "center" }}>
-          {err}
-        </p>
-      )}
-        <input
-          className="input"
-          type="email"
-          name="email"
-          autoComplete="email"
-          inputMode="email"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="input"
-          type="text"
-          name="username"
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUser(e.target.value)}
-        />
-        <input
-          className="input"
-          type="password"
-          name="new-password"
-          autoComplete="new-password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPw(e.target.value)}
-        />
-        <div className="auth-actions">
-          <button className="btn btn-accent" type="submit" disabled={loading}>
-            {loading ? "Creating…" : "Create account"}
-          </button>
-          <button className="btn btn-ghost" type="button" onClick={goLogin}>
-            Back to login
-          </button>
-        </div>
-      </form>
-    </div>
+        <form className="card auth-box" onSubmit={submit}>
+          {ok && (
+            <p
+              style={{
+                color: "var(--success)",
+                marginTop: 10,
+                textAlign: "center",
+              }}
+            >
+              Account created!
+            </p>
+          )}
+          {err && (
+            <p
+              style={{
+                color: "var(--danger)",
+                marginTop: 10,
+                textAlign: "center",
+              }}
+            >
+              {err}
+            </p>
+          )}
+          <input
+            className="input"
+            type="email"
+            name="email"
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className="input"
+            type="text"
+            name="username"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUser(e.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            name="new-password"
+            autoComplete="new-password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPw(e.target.value)}
+          />
+          <div className="auth-actions">
+            <button className="btn btn-accent" type="submit" disabled={loading}>
+              {loading ? "Creating…" : "Create account"}
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={goBack}>
+              Back to Lobby
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }
