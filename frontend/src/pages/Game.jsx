@@ -1279,99 +1279,99 @@ export default function Game() {
         canonicalPath="/game"
         noindex
       />
-      <div className="page">
-      <h1 className="page-header">System-Overload</h1>
+      <div className="page game-page">
+        <h1 className="page-header">System-Overload</h1>
 
-      {/* Meta pills */}
-      <div className="meta">
-        <span className="badge">Local</span>
-        <span className="pill">
-          Players alive: {countAlive} / {game.players.length}
-        </span>
-        <span className="pill">
-          Turn:
-          <b style={{ marginLeft: 6 }}>{me?.name}</b>
-          <span className="subtle" style={{ marginLeft: 6 }}>
-            (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
+        {/* Meta pills */}
+        <div className="meta">
+          <span className="badge">Local</span>
+          <span className="pill">
+            Players alive: {countAlive} / {game.players.length}
           </span>
-        </span>
-        <span
+          <span className="pill">
+            Turn:
+            <b style={{ marginLeft: 6 }}>{me?.name}</b>
+            <span className="subtle" style={{ marginLeft: 6 }}>
+              (Take {game.turnsToTake} turn{game.turnsToTake > 1 ? "s" : ""})
+            </span>
+          </span>
+          <span
             className="pill"
             style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
-          <span style={{ fontWeight: 700 }}>Pro</span>
-          <Button
-            type="button"
-            kind={isProMode ? "success" : "ghost"}
-            onClick={() => {
-              setIsProMode((prev) => !prev);
-              resetSelectedCard();
-            }}
-            aria-pressed={isProMode}
-            style={{ padding: "6px 12px" }}
-          >
-            {isProMode ? "On" : "Off"}
-          </Button>
-        </span>
-        {game.players.some((p) => p.isBot) &&
-          (() => {
-            const level = botSpeed; // 1..8
-            const maxLevel = BOT_SPEEDS.length; // 8
-            const t = (level - 1) / (maxLevel - 1); // 0..1
-            // Map 0..1 to red(0) -> green(120): lower -> higher
-            const hue = Math.round(t * 120);
-            const bg = `hsl(${hue} 80% 40%)`;
-            return (
-              <span
-                className="pill"
-                style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-              >
-                <span style={{ fontWeight: 700 }}>Bot Speed</span>
-                <button
-                  className="btn btn-ghost"
-                  aria-label="Slower"
-                  title="Slower"
-                  onClick={() => setBotSpeed((s) => Math.max(1, s - 1))}
-                  disabled={botSpeed <= 1}
-                  style={{ padding: "4px 8px" }}
+            <span style={{ fontWeight: 700 }}>Pro</span>
+            <Button
+              type="button"
+              kind={isProMode ? "success" : "ghost"}
+              onClick={() => {
+                setIsProMode((prev) => !prev);
+                resetSelectedCard();
+              }}
+              aria-pressed={isProMode}
+              style={{ padding: "6px 12px" }}
+            >
+              {isProMode ? "On" : "Off"}
+            </Button>
+          </span>
+          {game.players.some((p) => p.isBot) &&
+            (() => {
+              const level = botSpeed; // 1..8
+              const maxLevel = BOT_SPEEDS.length; // 8
+              const t = (level - 1) / (maxLevel - 1); // 0..1
+              // Map 0..1 to red(0) -> green(120): lower -> higher
+              const hue = Math.round(t * 120);
+              const bg = `hsl(${hue} 80% 40%)`;
+              return (
+                <span
+                  className="pill"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
                 >
-                  ◀
-                </button>
-                <div
-                  role="meter"
-                  aria-valuemin={1}
-                  aria-valuemax={maxLevel}
-                  aria-valuenow={level}
-                  title={`Bot speed: level ${level} (${botTickMs}ms)`}
-                  style={{
-                    width: 120,
-                    height: 24,
-                    borderRadius: 6,
-                    background: bg,
-                    color: "#fff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    letterSpacing: 0.3,
-                  }}
-                >
-                  {botTickMs}ms
-                </div>
-                <button
-                  className="btn btn-ghost"
-                  aria-label="Faster"
-                  title="Faster"
-                  onClick={() => setBotSpeed((s) => Math.min(maxLevel, s + 1))}
-                  disabled={botSpeed >= maxLevel}
-                  style={{ padding: "4px 8px" }}
-                >
-                  ▶
-                </button>
-              </span>
-            );
-          })()}
-      </div>
+                  <span style={{ fontWeight: 700 }}>Bot Speed</span>
+                  <button
+                    className="btn btn-ghost"
+                    aria-label="Slower"
+                    title="Slower"
+                    onClick={() => setBotSpeed((s) => Math.max(1, s - 1))}
+                    disabled={botSpeed <= 1}
+                    style={{ padding: "4px 8px" }}
+                  >
+                    ◀
+                  </button>
+                  <div
+                    role="meter"
+                    aria-valuemin={1}
+                    aria-valuemax={maxLevel}
+                    aria-valuenow={level}
+                    title={`Bot speed: level ${level} (${botTickMs}ms)`}
+                    style={{
+                      width: 120,
+                      height: 24,
+                      borderRadius: 6,
+                      background: bg,
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 700,
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    {botTickMs}ms
+                  </div>
+                  <button
+                    className="btn btn-ghost"
+                    aria-label="Faster"
+                    title="Faster"
+                    onClick={() => setBotSpeed((s) => Math.min(maxLevel, s + 1))}
+                    disabled={botSpeed >= maxLevel}
+                    style={{ padding: "4px 8px" }}
+                  >
+                    ▶
+                  </button>
+                </span>
+              );
+            })()}
+        </div>
 
       {/* Dev Tools Panel */}
       {devEnabled && (
@@ -1606,10 +1606,10 @@ export default function Game() {
 
       {/* Deck / Discard */}
       <div className="deck-area">
-        <div className="card deck-area__right">
+        <div className="card deck-area__panel deck-area__right">
           <DiscardPile cards={game.discard} maxToShow={10} />
         </div>
-        <div className="card deck-area__left">
+        <div className="card deck-area__panel deck-area__left">
           <div
             style={
               botHighlight?.type === "deck"
@@ -1642,10 +1642,8 @@ export default function Game() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 60, fontWeight: 900, color: "red" }}>
-              {game.deck.length}
-            </div>
-            <div className="section-title" style={{ color: "red" }}>
+            <div className="deck-area__count">{game.deck.length}</div>
+            <div className="section-title deck-area__label">
               Cards
               <br />
               Remain
@@ -1662,7 +1660,7 @@ export default function Game() {
       {/* Drawn card modal (hidden during bot turns) */}
       <Modal
         show={!!game.drawnCard && !game.players[game.turn]?.isBot}
-        className={`modal--drawn${
+        className={`modal--drawn modal--landscape${
           game.advanceAfterDraw && drawAnim && !drawAnim.arrived
             ? " modal--pre"
             : ""
@@ -1796,7 +1794,7 @@ export default function Game() {
       {/* Fatal resolution */}
       <Modal
         show={game.phase === PHASE.RESOLVE_FATAL}
-        className={`modal--drawn${
+        className={`modal--drawn modal--landscape${
           !game.players[game.turn]?.isBot && fatalAnim && !fatalAnim.arrived
             ? " modal--pre"
             : ""
@@ -2162,16 +2160,16 @@ export default function Game() {
         show={selectedCard !== null && !isProMode}
         onClose={resetSelectedCard}
         dismissOnClick
+        className="modal--landscape"
       >
         {selectedCard && (
           <>
-            {/* <div className="section-title">{selectedCard}</div> */}
-            {/* <div
+            <div
               className="hstack modal-card"
               style={{ justifyContent: "center" }}
-            > */}
-            <Card name={selectedCard} size="modal" disabled />
-            {/* </div> */}
+            >
+              <Card name={selectedCard} size="modal" disabled />
+            </div>
             <div
               className="section-title multiline card-desc modal-desc"
               style={{ marginBottom: 12 }}

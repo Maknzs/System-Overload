@@ -174,7 +174,7 @@ export default function Lobby({ onStart, onBack, authed, user }) {
         keywords={["system overload", "multiplayer", "card game", "lobby"]}
         schema={marketingSchema}
       />
-      <div className="page">
+      <div className="page lobby-page">
         <h1 className="page-header">Lobby</h1>
 
         <section className="card marketing-card">

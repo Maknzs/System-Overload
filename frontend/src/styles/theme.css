@@ -247,6 +247,32 @@ body {
     letter-spacing: 1.4vw;
   }
 }
+@media (max-width: 480px) {
+  :root {
+    --card-hand-scale: 0.75;
+    --card-deck-scale: 0.75;
+    --card-discard-scale: 0.75;
+    --card-modal-scale: 1.5;
+  }
+}
+
+@media (max-height: 720px) {
+  :root {
+    --card-modal-scale: 2;
+  }
+}
+
+@media (max-height: 600px) {
+  :root {
+    --card-modal-scale: 1.75;
+  }
+}
+
+@media (max-height: 480px) {
+  :root {
+    --card-modal-scale: 1.45;
+  }
+}
 /* Make the left panel content vertical */
 .deck-area__left {
   display: flex;

@@ -2,7 +2,7 @@
   position: relative;
   display: block;
   width: 100%; /* overall footprint */
-  min-height: 275px;
+  min-height: calc(var(--card-discard-h) + 100px);
   padding: 0;
   background: none;
   border: 0;
@@ -104,4 +104,27 @@
 .discard__empty {
   color: #a9b3d6;
   font-size: 2rem;
+}
+
+@media (max-width: 480px) {
+  .discard {
+    min-height: calc(var(--card-discard-h) + 50px);
+    --gap: 45px;
+  }
+
+  .discard__badge {
+    min-width: 28px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+
+  .discard__label {
+    top: 12px;
+    right: 42px;
+    font-size: 0.75rem;
+  }
+
+  .discard__empty {
+    font-size: 1.5rem;
+  }
 }

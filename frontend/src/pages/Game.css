@@ -39,6 +39,23 @@
   color: var(--warning);
   font-weight: 800;
 }
+
+.deck-area__panel {
+  padding: 14px 16px;
+}
+
+.deck-area__count {
+  font-size: 60px;
+  font-weight: 900;
+  color: red;
+  line-height: 1;
+}
+
+.deck-area__label {
+  color: red;
+  margin: 6px 0 0;
+  line-height: 1.2;
+}
 .log {
   margin-top: 8px;
 }
@@ -235,5 +252,75 @@
   100% {
     transform: translateX(0) rotate(-6deg) scale(0.985);
     opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-page .page-header {
+    font-size: 1.5rem;
+    letter-spacing: 1.05vw;
+  }
+
+  .game-page .section-title {
+    font-size: 18px;
+  }
+
+  .game-page .modal-title {
+    font-size: 2.4rem;
+  }
+
+  .game-page .meta {
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+
+  .game-page .pill,
+  .game-page .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .game-page .subtle {
+    font-size: 0.75rem;
+  }
+
+  .deck-area__panel {
+    padding: 10px 12px;
+  }
+
+  .deck-area__left {
+    gap: 12px;
+  }
+
+  .deck-area__count {
+    font-size: 45px;
+  }
+
+  .deck-area__label {
+    font-size: 16px;
+  }
+}
+
+@media (max-height: 640px) {
+  .modal-title {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+  }
+
+  .modal-card {
+    margin: 0;
+  }
+
+  .modal-desc {
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
+  }
+}
+
+@media (max-height: 520px) {
+  .modal-title {
+    font-size: clamp(1.4rem, 4.5vw, 2rem);
+  }
+
+  .modal-desc {
+    font-size: clamp(0.85rem, 2.6vw, 1rem);
   }
 }
