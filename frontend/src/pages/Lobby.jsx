@@ -129,7 +129,9 @@ export default function Lobby({ onStart, onBack, authed, user }) {
     e.preventDefault();
     if (fbStatus === "sending") return;
     setFbError("");
-    const players = names.map((n) => n.trim()).filter(Boolean);
+    const playerNames = players
+      .map((p) => (p.name || "").trim())
+      .filter(Boolean);
     if (!fbMsg || fbMsg.trim().length < 5) {
       setFbError("Please enter at least 5 characters.");
       return;
@@ -139,7 +141,7 @@ export default function Lobby({ onStart, onBack, authed, user }) {
       await api.submitFeedback({
         email: fbEmail || undefined,
         message: fbMsg.trim(),
-        players,
+        players: playerNames,
       });
       setFbStatus("success");
       setFbMsg("");
