@@ -1,6 +1,8 @@
 User-agent: *
-Disallow: /game
-Disallow: /profile
 Allow: /
+Disallow: /api/
+Disallow: /game
+Disallow: /login
+Disallow: /profile
 
 Sitemap: https://system-overload.com/sitemap.xml
